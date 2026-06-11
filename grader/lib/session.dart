@@ -14,6 +14,7 @@ import 'grading.dart' as grading;
 import 'keyfile.dart';
 import 'omr.dart';
 import 'qr_scan.dart';
+import 'records.dart';
 import 'select.dart' show sectionKeys;
 import 'sheet_render.dart';
 
@@ -54,9 +55,12 @@ class GraderSession extends ChangeNotifier {
   /// PNG of the scanned page with the same wrong-row outlines.
   Uint8List? get scannedSheetPng => _scannedPng;
 
-  /// Whether the user confirmed the displayed scoring. (Issue #4 will
-  /// record the grade at confirmation time.)
+  /// Whether the user confirmed the displayed scoring.
   bool get confirmed => _confirmed;
+
+  /// Confirmed grades of the current exam, keyed by variant id. Cleared
+  /// (after the UI's warning) when a new answer key is loaded.
+  final GradeBook gradeBook = GradeBook();
 
   SessionStage get stage {
     if (_key == null) return SessionStage.needKey;
@@ -86,6 +90,7 @@ class GraderSession extends ChangeNotifier {
     _referencePng = null;
     _scannedPng = null;
     _confirmed = false;
+    gradeBook.clear();
     _lastError = null;
     notifyListeners();
     return true;
@@ -227,13 +232,23 @@ class GraderSession extends ChangeNotifier {
     _scannedPng = Uint8List.fromList(img.encodePng(scanned));
   }
 
-  /// Marks the displayed scoring as user-confirmed. (Issue #4 records the
-  /// grade here.)
+  /// Marks the displayed scoring as user-confirmed and records it in the
+  /// grade book (replacing any earlier grade of the same variant — a
+  /// re-scan updates the score).
   void confirmResult() {
-    if (_grade == null) {
+    final grade = _grade;
+    if (grade == null) {
       throw StateError('confirmResult called without a graded sheet');
     }
     _confirmed = true;
+    gradeBook.record(
+      GradeRecord(
+        variantId: _payload!.variantId,
+        score: grade.score,
+        total: grade.total,
+        recordedAt: DateTime.now(),
+      ),
+    );
     notifyListeners();
   }
 

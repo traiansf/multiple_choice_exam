@@ -289,6 +289,71 @@ void main() {
     });
   });
 
+  group('grade recording (issue #4)', () {
+    test('confirmResult records the grade by variant id', () {
+      final session = GraderSession()
+        ..loadKey(keyJson)
+        ..setQr(qrRaw);
+      session.processSheet(correctSheet());
+      expect(session.gradeBook.isEmpty, isTrue);
+      session.confirmResult();
+      final record = session.gradeBook.records.single;
+      expect(record.variantId, 1);
+      expect(record.score, 5);
+      expect(record.total, 5);
+      expect(record.recordedAt, isNotNull);
+    });
+
+    test('re-grading the same variant replaces the recorded score', () {
+      final session = GraderSession()
+        ..loadKey(keyJson)
+        ..setQr(qrRaw);
+      session.processSheet(correctSheet());
+      session.confirmResult();
+      session.nextSheet();
+
+      // Same QR scanned again; this time one answer is wrong.
+      session.setQr(qrRaw);
+      session.processSheet(
+        buildSheetImage(
+          rows: 5,
+          optionsPerQuestion: 4,
+          filledByRow: {
+            0: [3],
+            1: [1],
+            2: [0],
+            3: [2],
+            4: [0], // wrong
+          },
+        ),
+      );
+      session.confirmResult();
+      expect(session.gradeBook.length, 1);
+      expect(session.gradeBook.records.single.score, 4);
+    });
+
+    test('records survive nextSheet and retakeSheet', () {
+      final session = GraderSession()
+        ..loadKey(keyJson)
+        ..setQr(qrRaw);
+      session.processSheet(correctSheet());
+      session.confirmResult();
+      session.retakeSheet();
+      session.nextSheet();
+      expect(session.gradeBook.length, 1);
+    });
+
+    test('loading a new key clears the records', () {
+      final session = GraderSession()
+        ..loadKey(keyJson)
+        ..setQr(qrRaw);
+      session.processSheet(correctSheet());
+      session.confirmResult();
+      session.loadKey(keyJson);
+      expect(session.gradeBook.isEmpty, isTrue);
+    });
+  });
+
   test('notifies listeners on every transition', () {
     final session = GraderSession();
     var notifications = 0;
