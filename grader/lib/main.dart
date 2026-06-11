@@ -4,6 +4,7 @@ import 'package:file_selector/file_selector.dart';
 import 'package:flutter/material.dart';
 
 import 'capture_sheet_screen.dart';
+import 'records_screen.dart';
 import 'result_screen.dart';
 import 'scan_qr_screen.dart';
 import 'session.dart';
@@ -32,13 +33,19 @@ class HomeScreen extends StatelessWidget {
 
   Future<void> _loadKey(BuildContext context) async {
     if (session.stage != SessionStage.needKey) {
+      final recorded = session.gradeBook.length;
       final replace = await showDialog<bool>(
         context: context,
         builder: (context) => AlertDialog(
           title: const Text('Replace the answer key?'),
-          content: const Text(
-            'Loading a new key starts a new exam: the current QR and sheet'
-            ' state will be discarded.',
+          content: Text(
+            recorded > 0
+                ? 'Loading a new key starts a new exam: the'
+                      ' $recorded recorded grade${recorded == 1 ? '' : 's'}'
+                      ' will be discarded. Export the report first if you'
+                      ' still need them.'
+                : 'Loading a new key starts a new exam: the current QR and'
+                      ' sheet state will be discarded.',
           ),
           actions: [
             TextButton(
@@ -129,6 +136,12 @@ class HomeScreen extends StatelessWidget {
                                 ' — ${key.optionsPerQuestion} options per'
                                 ' question',
                               ),
+                              const SizedBox(height: 8),
+                              Text(
+                                '${session.gradeBook.length} sheet'
+                                '${session.gradeBook.length == 1 ? '' : 's'}'
+                                ' recorded',
+                              ),
                             ],
                           ),
                   ),
@@ -146,6 +159,18 @@ class HomeScreen extends StatelessWidget {
                   icon: const Icon(Icons.qr_code_scanner),
                   label: const Text('Grade a sheet'),
                   onPressed: key == null ? null : () => _gradeFlow(context),
+                ),
+                const SizedBox(height: 8),
+                OutlinedButton.icon(
+                  icon: const Icon(Icons.table_view),
+                  label: const Text('Recorded grades'),
+                  onPressed: session.gradeBook.isEmpty
+                      ? null
+                      : () => Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (_) => RecordsScreen(session: session),
+                          ),
+                        ),
                 ),
               ],
             ),

@@ -7,13 +7,17 @@ import 'package:image/image.dart' as img;
 
 import 'sheet_geometry.dart' as geom;
 
+/// Resolution of the rendered reference sheet (and the downscale target for
+/// the displayed scan).
+const double referencePxPerMm = 4;
+
 /// Draws a clean answer-sheet page with the bubble at
 /// `correctPositions[row]` filled on every row — what a perfect submission
 /// of this variant would look like.
 img.Image renderReferenceSheet({
   required List<int> correctPositions,
   required int optionsPerQuestion,
-  double pxPerMm = 4,
+  double pxPerMm = referencePxPerMm,
 }) {
   final sheet = img.Image(
     width: (geom.pageWidthMm * pxPerMm).round(),

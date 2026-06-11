@@ -14,7 +14,9 @@ import 'grading.dart' as grading;
 import 'keyfile.dart';
 import 'omr.dart';
 import 'qr_scan.dart';
+import 'records.dart';
 import 'select.dart' show sectionKeys;
+import 'sheet_geometry.dart' as geom;
 import 'sheet_render.dart';
 
 enum SessionStage {
@@ -54,9 +56,12 @@ class GraderSession extends ChangeNotifier {
   /// PNG of the scanned page with the same wrong-row outlines.
   Uint8List? get scannedSheetPng => _scannedPng;
 
-  /// Whether the user confirmed the displayed scoring. (Issue #4 will
-  /// record the grade at confirmation time.)
+  /// Whether the user confirmed the displayed scoring.
   bool get confirmed => _confirmed;
+
+  /// Confirmed grades of the current exam, keyed by variant id. Cleared
+  /// (after the UI's warning) when a new answer key is loaded.
+  final GradeBook gradeBook = GradeBook();
 
   SessionStage get stage {
     if (_key == null) return SessionStage.needKey;
@@ -68,8 +73,9 @@ class GraderSession extends ChangeNotifier {
   }
 
   /// Loads a new answer key. Discards everything belonging to the previous
-  /// exam (QR, sheet, result — and, once issue #4 lands, recorded grades:
-  /// warn the user there before calling this).
+  /// exam — including the recorded grades, silently. Every call site must
+  /// warn the user first when [gradeBook] is non-empty (the home screen's
+  /// replace-key dialog does); this method cannot ask.
   bool loadKey(String jsonText) {
     final AnswerKey parsed;
     try {
@@ -86,6 +92,7 @@ class GraderSession extends ChangeNotifier {
     _referencePng = null;
     _scannedPng = null;
     _confirmed = false;
+    gradeBook.clear();
     _lastError = null;
     notifyListeners();
     return true;
@@ -172,8 +179,13 @@ class GraderSession extends ChangeNotifier {
     _omr = detected;
     if (detected.needsReview) {
       _grade = null;
+      // No reference (nothing was graded), but keep the scan with the
+      // flagged rows outlined so the grader can see what the camera saw
+      // while grading by hand on the review screen.
       _referencePng = null;
-      _scannedPng = null;
+      _scannedPng = _encodeScan(pageImage, [
+        for (final row in detected.reviewRows) row - 1,
+      ], key.optionsPerQuestion);
       _lastError = null;
       notifyListeners();
       return true;
@@ -216,24 +228,72 @@ class GraderSession extends ChangeNotifier {
       optionsPerQuestion: optionsPerQuestion,
     );
     annotateWrongRows(reference, wrongRows, optionsPerQuestion);
-    // Downscale camera-resolution pages to the reference's width before the
-    // (synchronous) PNG encode: full-resolution encodes block the UI thread
-    // for hundreds of ms, and the comparison view never needs more pixels.
-    final scanned = pageImage.width > reference.width
-        ? img.copyResize(pageImage, width: reference.width)
-        : pageImage.clone();
-    annotateWrongRows(scanned, wrongRows, optionsPerQuestion);
     _referencePng = Uint8List.fromList(img.encodePng(reference));
-    _scannedPng = Uint8List.fromList(img.encodePng(scanned));
+    _scannedPng = _encodeScan(pageImage, wrongRows, optionsPerQuestion);
   }
 
-  /// Marks the displayed scoring as user-confirmed. (Issue #4 records the
-  /// grade here.)
+  /// Encodes the scanned page with [highlightRows] (0-based) outlined in
+  /// red. Downscales camera-resolution pages first: full-resolution PNG
+  /// encodes block the UI thread for hundreds of ms, and the display never
+  /// needs more pixels.
+  Uint8List _encodeScan(
+    img.Image pageImage,
+    List<int> highlightRows,
+    int optionsPerQuestion,
+  ) {
+    final targetWidth = (geom.pageWidthMm * referencePxPerMm).round();
+    final scanned = pageImage.width > targetWidth
+        ? img.copyResize(pageImage, width: targetWidth)
+        : pageImage.clone();
+    annotateWrongRows(scanned, highlightRows, optionsPerQuestion);
+    return Uint8List.fromList(img.encodePng(scanned));
+  }
+
+  /// Marks the displayed scoring as user-confirmed and records it in the
+  /// grade book (replacing any earlier grade of the same variant — a
+  /// re-scan updates the score).
   void confirmResult() {
-    if (_grade == null) {
+    final grade = _grade;
+    if (grade == null) {
       throw StateError('confirmResult called without a graded sheet');
     }
     _confirmed = true;
+    gradeBook.record(
+      GradeRecord(
+        variantId: _payload!.variantId,
+        score: grade.score,
+        total: grade.total,
+        recordedAt: DateTime.now(),
+      ),
+    );
+    notifyListeners();
+  }
+
+  /// Records a hand-entered score for a review-flagged sheet: the grader
+  /// inspected the paper on the review screen and graded it manually. Only
+  /// valid while the current sheet needs review — cleanly graded sheets go
+  /// through [confirmResult].
+  void submitManualGrade(int score) {
+    final payload = _payload;
+    if (payload == null || !(_omr?.needsReview ?? false)) {
+      throw StateError(
+        'submitManualGrade is only valid for a review-flagged sheet',
+      );
+    }
+    final total = payload.counts.values.fold(0, (sum, count) => sum + count);
+    if (score < 0 || score > total) {
+      throw ArgumentError.value(score, 'score', 'must be between 0 and $total');
+    }
+    _confirmed = true;
+    gradeBook.record(
+      GradeRecord(
+        variantId: payload.variantId,
+        score: score,
+        total: total,
+        recordedAt: DateTime.now(),
+        manual: true,
+      ),
+    );
     notifyListeners();
   }
 

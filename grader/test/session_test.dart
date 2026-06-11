@@ -236,7 +236,7 @@ void main() {
       expect(scanned.width, reference.width);
     });
 
-    test('review-flagged sheet exposes no comparison images', () {
+    test('review-flagged sheet keeps the scan but has no reference', () {
       final session = GraderSession()
         ..loadKey(keyJson)
         ..setQr(qrRaw);
@@ -255,7 +255,12 @@ void main() {
       );
       expect(session.omrResult!.needsReview, isTrue);
       expect(session.referenceSheetPng, isNull);
-      expect(session.scannedSheetPng, isNull);
+      expect(
+        session.scannedSheetPng,
+        isNotNull,
+        reason: 'the grader needs to see the scan to grade by hand',
+      );
+      expect(session.scannedSheetPng!.sublist(0, 4), pngMagic);
     });
 
     test('confirm lifecycle: false -> confirmed -> reset by nextSheet', () {
@@ -286,6 +291,164 @@ void main() {
       session.retakeSheet();
       expect(session.referenceSheetPng, isNull);
       expect(session.confirmed, isFalse);
+    });
+  });
+
+  group('grade recording (issue #4)', () {
+    test('confirmResult records the grade by variant id', () {
+      final session = GraderSession()
+        ..loadKey(keyJson)
+        ..setQr(qrRaw);
+      session.processSheet(correctSheet());
+      expect(session.gradeBook.isEmpty, isTrue);
+      session.confirmResult();
+      final record = session.gradeBook.records.single;
+      expect(record.variantId, 1);
+      expect(record.score, 5);
+      expect(record.total, 5);
+      expect(record.recordedAt, isNotNull);
+    });
+
+    test('re-grading the same variant replaces the recorded score', () {
+      final session = GraderSession()
+        ..loadKey(keyJson)
+        ..setQr(qrRaw);
+      session.processSheet(correctSheet());
+      session.confirmResult();
+      session.nextSheet();
+
+      // Same QR scanned again; this time one answer is wrong.
+      session.setQr(qrRaw);
+      session.processSheet(
+        buildSheetImage(
+          rows: 5,
+          optionsPerQuestion: 4,
+          filledByRow: {
+            0: [3],
+            1: [1],
+            2: [0],
+            3: [2],
+            4: [0], // wrong
+          },
+        ),
+      );
+      session.confirmResult();
+      expect(session.gradeBook.length, 1);
+      expect(session.gradeBook.records.single.score, 4);
+    });
+
+    test('records survive nextSheet and retakeSheet', () {
+      final session = GraderSession()
+        ..loadKey(keyJson)
+        ..setQr(qrRaw);
+      session.processSheet(correctSheet());
+      session.confirmResult();
+      session.retakeSheet();
+      session.nextSheet();
+      expect(session.gradeBook.length, 1);
+    });
+
+    img.Image reviewSheet() => buildSheetImage(
+      rows: 5,
+      optionsPerQuestion: 4,
+      filledByRow: {
+        0: [3],
+        1: [1, 2], // double mark -> needsReview
+        2: [0],
+        3: [2],
+        4: [3],
+      },
+    );
+
+    test('manual grade for a review-flagged sheet is recorded as manual', () {
+      final session = GraderSession()
+        ..loadKey(keyJson)
+        ..setQr(qrRaw);
+      session.processSheet(reviewSheet());
+      expect(session.omrResult!.needsReview, isTrue);
+      session.submitManualGrade(3);
+      expect(session.confirmed, isTrue);
+      final record = session.gradeBook.records.single;
+      expect(record.variantId, 1);
+      expect(record.score, 3);
+      expect(record.total, 5);
+      expect(record.manual, isTrue);
+    });
+
+    test('manual grade replaces an earlier automatic grade', () {
+      final session = GraderSession()
+        ..loadKey(keyJson)
+        ..setQr(qrRaw);
+      session.processSheet(correctSheet());
+      session.confirmResult();
+      session.nextSheet();
+      session.setQr(qrRaw);
+      session.processSheet(reviewSheet());
+      session.submitManualGrade(2);
+      expect(session.gradeBook.length, 1);
+      expect(session.gradeBook.records.single.score, 2);
+      expect(session.gradeBook.records.single.manual, isTrue);
+    });
+
+    test('manual grade accepts the exact boundaries 0 and total', () {
+      final session = GraderSession()
+        ..loadKey(keyJson)
+        ..setQr(qrRaw);
+      session.processSheet(reviewSheet());
+      session.submitManualGrade(0);
+      expect(session.gradeBook.records.single.score, 0);
+
+      session.nextSheet();
+      session.setQr(qrRaw);
+      session.processSheet(reviewSheet());
+      session.submitManualGrade(5);
+      expect(session.gradeBook.records.single.score, 5);
+    });
+
+    test('automatic grade replaces an earlier manual grade', () {
+      final session = GraderSession()
+        ..loadKey(keyJson)
+        ..setQr(qrRaw);
+      session.processSheet(reviewSheet());
+      session.submitManualGrade(2);
+      session.nextSheet();
+      session.setQr(qrRaw);
+      session.processSheet(correctSheet());
+      session.confirmResult();
+      expect(session.gradeBook.length, 1);
+      expect(session.gradeBook.records.single.score, 5);
+      expect(session.gradeBook.records.single.manual, isFalse);
+    });
+
+    test('manual grade outside 0..total is rejected', () {
+      final session = GraderSession()
+        ..loadKey(keyJson)
+        ..setQr(qrRaw);
+      session.processSheet(reviewSheet());
+      expect(() => session.submitManualGrade(6), throwsArgumentError);
+      expect(() => session.submitManualGrade(-1), throwsArgumentError);
+      expect(session.gradeBook.isEmpty, isTrue);
+    });
+
+    test('manual grade without a review-flagged sheet throws', () {
+      final session = GraderSession()
+        ..loadKey(keyJson)
+        ..setQr(qrRaw);
+      // No sheet processed at all:
+      expect(() => session.submitManualGrade(3), throwsStateError);
+      // Cleanly graded sheet must go through confirmResult instead:
+      session.processSheet(correctSheet());
+      expect(() => session.submitManualGrade(3), throwsStateError);
+    });
+
+    test('loading a new key clears the records', () {
+      final session = GraderSession()
+        ..loadKey(keyJson)
+        ..setQr(qrRaw);
+      session.processSheet(correctSheet());
+      session.confirmResult();
+      session.loadKey(keyJson);
+      expect(session.gradeBook.isEmpty, isTrue);
     });
   });
 

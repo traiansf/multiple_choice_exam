@@ -287,7 +287,7 @@ fails CI immediately. Changing the algorithm requires regenerating the vectors
 │   └── tests/              # parser/validator/rng/round-trip tests
 ├── grader/                 # Flutter grading app
 │   ├── lib/                # core: rng, select, qr_scan, omr, sheet_geometry, sheet_render, keyfile, grading
-│   │                       # app: session, framing, sheet_guide_overlay, scan/capture/result screens, main
+│   │                       # app: session, framing, records, sheet_guide_overlay, scan/capture/result/records screens, main
 │   └── test/               # vector replay, OMR fixtures, session/framing/widget tests
 ├── shared/
 │   └── test-vectors.json   # cross-language determinism fixture (source of truth)
