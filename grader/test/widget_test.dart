@@ -51,6 +51,11 @@ void main() {
   testWidgets('result screen shows score and per-question rows', (
     tester,
   ) async {
+    // Tall surface so the per-question list is fully built below the
+    // comparison images.
+    tester.view.physicalSize = const Size(900, 1600);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
     final session = GraderSession()
       ..loadKey(keyJson)
       ..setQr(qrRaw);
@@ -93,6 +98,9 @@ void main() {
   testWidgets('result screen shows blank-row text for unanswered question', (
     tester,
   ) async {
+    tester.view.physicalSize = const Size(900, 1600);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
     final session = GraderSession()
       ..loadKey(keyJson)
       ..setQr(qrRaw);
@@ -154,7 +162,89 @@ void main() {
       }),
     );
     await tester.pumpWidget(MaterialApp(home: ResultScreen(session: session)));
-    await tester.tap(find.text('Next sheet'));
+    await tester.tap(find.text('Confirm — next sheet'));
+    expect(session.stage, SessionStage.needQr);
+  });
+
+  testWidgets('graded result shows the side-by-side comparison images', (
+    tester,
+  ) async {
+    final session = GraderSession()
+      ..loadKey(keyJson)
+      ..setQr(qrRaw);
+    session.processSheet(
+      sheetWith({
+        0: [3],
+        1: [1],
+        2: [0],
+        3: [2],
+        4: [0], // wrong
+      }),
+    );
+    await tester.pumpWidget(MaterialApp(home: ResultScreen(session: session)));
+    expect(find.text('Correct answers'), findsOneWidget);
+    expect(find.text('Scanned sheet'), findsOneWidget);
+    expect(find.byType(Image), findsNWidgets(2));
+    expect(find.text('Confirm — next sheet'), findsOneWidget);
+  });
+
+  testWidgets('review result shows no comparison and keeps Next sheet', (
+    tester,
+  ) async {
+    final session = GraderSession()
+      ..loadKey(keyJson)
+      ..setQr(qrRaw);
+    session.processSheet(
+      sheetWith({
+        0: [3],
+        1: [1, 2],
+        2: [0],
+        3: [2],
+        4: [3],
+      }),
+    );
+    await tester.pumpWidget(MaterialApp(home: ResultScreen(session: session)));
+    expect(find.byType(Image), findsNothing);
+    expect(find.text('Next sheet'), findsOneWidget);
+    expect(find.text('Confirm — next sheet'), findsNothing);
+  });
+
+  testWidgets('double-tapping Confirm during the pop animation is harmless', (
+    tester,
+  ) async {
+    final session = GraderSession()
+      ..loadKey(keyJson)
+      ..setQr(qrRaw);
+    session.processSheet(
+      sheetWith({
+        for (var row = 0; row < 5; row++) row: [correctPositions[row]],
+      }),
+    );
+    await tester.pumpWidget(MaterialApp(home: ResultScreen(session: session)));
+    await tester.tap(find.text('Confirm — next sheet'));
+    await tester.tap(find.text('Confirm — next sheet'), warnIfMissed: false);
+    expect(tester.takeException(), isNull);
+    expect(session.stage, SessionStage.needQr);
+  });
+
+  testWidgets('confirm button marks the result confirmed before advancing', (
+    tester,
+  ) async {
+    final session = GraderSession()
+      ..loadKey(keyJson)
+      ..setQr(qrRaw);
+    session.processSheet(
+      sheetWith({
+        for (var row = 0; row < 5; row++) row: [correctPositions[row]],
+      }),
+    );
+    var confirmedSeen = false;
+    session.addListener(
+      () => confirmedSeen = confirmedSeen || session.confirmed,
+    );
+    await tester.pumpWidget(MaterialApp(home: ResultScreen(session: session)));
+    await tester.tap(find.text('Confirm — next sheet'));
+    expect(confirmedSeen, isTrue, reason: 'confirmResult ran before nextSheet');
     expect(session.stage, SessionStage.needQr);
   });
 }

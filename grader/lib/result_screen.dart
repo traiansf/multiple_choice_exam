@@ -2,17 +2,36 @@
 /// manual-review notice when OMR flagged rows. Pure UI over GraderSession.
 library;
 
+import 'dart:typed_data';
+
 import 'package:flutter/material.dart';
 
 import 'session.dart';
 
-class ResultScreen extends StatelessWidget {
+class ResultScreen extends StatefulWidget {
   const ResultScreen({super.key, required this.session});
 
   final GraderSession session;
 
   @override
+  State<ResultScreen> createState() => _ResultScreenState();
+}
+
+class _ResultScreenState extends State<ResultScreen> {
+  /// The buttons stay tappable during the pop animation; this guard makes a
+  /// second tap a no-op instead of acting on the already-advanced session.
+  bool _submitted = false;
+
+  void _finish(VoidCallback action, String popValue) {
+    if (_submitted) return;
+    _submitted = true;
+    action();
+    Navigator.of(context).pop(popValue);
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final session = widget.session;
     final omr = session.omrResult;
     final grade = session.gradeResult;
     final needsReview = omr?.needsReview ?? false;
@@ -29,27 +48,29 @@ class ResultScreen extends StatelessWidget {
         padding: const EdgeInsets.all(16),
         child: Row(
           children: [
-            if (needsReview || grade != null)
-              Expanded(
-                child: OutlinedButton.icon(
-                  icon: const Icon(Icons.camera_alt),
-                  label: const Text('Retake sheet'),
-                  onPressed: () {
-                    session.retakeSheet();
-                    Navigator.of(context).pop('retake');
-                  },
-                ),
+            Expanded(
+              child: OutlinedButton.icon(
+                icon: const Icon(Icons.camera_alt),
+                label: const Text('Retake sheet'),
+                onPressed: () => _finish(session.retakeSheet, 'retake'),
               ),
+            ),
             const SizedBox(width: 12),
             Expanded(
-              child: FilledButton.icon(
-                icon: const Icon(Icons.qr_code_scanner),
-                label: const Text('Next sheet'),
-                onPressed: () {
-                  session.nextSheet();
-                  Navigator.of(context).pop('next');
-                },
-              ),
+              child: needsReview
+                  ? FilledButton.icon(
+                      icon: const Icon(Icons.qr_code_scanner),
+                      label: const Text('Next sheet'),
+                      onPressed: () => _finish(session.nextSheet, 'next'),
+                    )
+                  : FilledButton.icon(
+                      icon: const Icon(Icons.check),
+                      label: const Text('Confirm — next sheet'),
+                      onPressed: () => _finish(() {
+                        session.confirmResult();
+                        session.nextSheet();
+                      }, 'next'),
+                    ),
             ),
           ],
         ),
@@ -92,6 +113,26 @@ class _ReviewNotice extends StatelessWidget {
   }
 }
 
+class _LabeledSheet extends StatelessWidget {
+  const _LabeledSheet({required this.label, required this.png});
+
+  final String label;
+  final Uint8List png;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        Text(label, style: Theme.of(context).textTheme.labelLarge),
+        const SizedBox(height: 4),
+        // Both images are full-page renders with the same A4 aspect, so
+        // equal-width columns show them scaled to match.
+        Expanded(child: Image.memory(png, fit: BoxFit.contain)),
+      ],
+    );
+  }
+}
+
 class _GradeView extends StatelessWidget {
   const _GradeView({required this.session});
 
@@ -119,6 +160,33 @@ class _GradeView extends StatelessWidget {
             ],
           ),
         ),
+        if (session.referenceSheetPng != null &&
+            session.scannedSheetPng != null)
+          SizedBox(
+            height: 260,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(
+                    child: _LabeledSheet(
+                      label: 'Correct answers',
+                      png: session.referenceSheetPng!,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: _LabeledSheet(
+                      label: 'Scanned sheet',
+                      png: session.scannedSheetPng!,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        const SizedBox(height: 12),
         const Divider(height: 1),
         Expanded(
           child: ListView.builder(
