@@ -1,7 +1,6 @@
-from samples import SAMPLE_MD
-
 from mcexam.scramble import scramble_exam, to_markdown
 from mcexam.validator import load_exam
+from samples import SAMPLE_MD
 
 
 def test_scramble_preserves_question_multiset_per_section() -> None:

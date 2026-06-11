@@ -1,7 +1,7 @@
 import pytest
-from samples import SAMPLE_MD
 
 from mcexam.parser import ParseError, parse
+from samples import SAMPLE_MD
 
 
 def test_parses_sample_structure() -> None:

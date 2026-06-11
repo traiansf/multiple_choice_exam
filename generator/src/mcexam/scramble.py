@@ -29,7 +29,7 @@ def scramble_exam(exam: Exam, seed: int) -> Exam:
 
 def to_markdown(exam: Exam) -> str:
     lines = [f"# {exam.title}"]
-    for key, name in zip(SECTION_KEYS, SECTION_NAMES):
+    for key, name in zip(SECTION_KEYS, SECTION_NAMES, strict=True):
         lines += ["", f"## {name}"]
         for question in exam.sections[key]:
             lines += ["", f"### {question.prompt}"]

@@ -69,7 +69,7 @@ def validate(raw: RawExam) -> Exam:
         raise ValidationError("\n".join(errors))
 
     sections: dict[str, tuple[Question, ...]] = {}
-    for key, name in zip(SECTION_KEYS, SECTION_NAMES):
+    for key, name in zip(SECTION_KEYS, SECTION_NAMES, strict=True):
         questions = []
         for question in by_name[name].questions:
             answer = next(i for i, option in enumerate(question.options) if option.checked)

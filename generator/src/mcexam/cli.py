@@ -110,8 +110,7 @@ def generate(
     for key in SECTION_KEYS:
         if counts[key] > sizes[key]:
             raise click.ClickException(
-                f"requested {counts[key]} {key} questions but '{input_path}'"
-                f" has only {sizes[key]}"
+                f"requested {counts[key]} {key} questions but '{input_path}' has only {sizes[key]}"
             )
     if base_seed is None:
         base_seed = secrets.randbits(64)

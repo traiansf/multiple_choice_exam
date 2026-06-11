@@ -145,7 +145,7 @@ def _draw_answer_sheet(
 def _draw_questions(
     canvas: Canvas, exam: Exam, plan: VariantPlan, variant_id: int, font: str
 ) -> None:
-    section_titles = dict(zip(SECTION_KEYS, SECTION_NAMES))
+    section_titles = dict(zip(SECTION_KEYS, SECTION_NAMES, strict=True))
     width = PAGE_W - 2 * MARGIN
     y = PAGE_H - MARGIN
 

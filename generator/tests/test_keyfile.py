@@ -1,9 +1,8 @@
 import json
 
-from samples import SAMPLE_MD
-
 from mcexam.keyfile import build_key, source_fingerprint, write_key
 from mcexam.validator import load_exam
+from samples import SAMPLE_MD
 
 
 def test_fingerprint_is_8_hex_chars_and_stable() -> None:

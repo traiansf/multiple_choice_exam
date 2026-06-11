@@ -1,5 +1,3 @@
-from samples import SAMPLE_MD
-
 from mcexam.qr import qr_png
 from mcexam.render import (
     GRID_LEFT,
@@ -14,6 +12,7 @@ from mcexam.render import (
 )
 from mcexam.select import build_variant
 from mcexam.validator import load_exam
+from samples import SAMPLE_MD
 
 
 def test_bubble_centers_increase_with_column() -> None:

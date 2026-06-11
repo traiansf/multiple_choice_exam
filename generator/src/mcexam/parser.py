@@ -68,6 +68,7 @@ def parse(text: str) -> RawExam:
         else:
             raise ParseError(
                 line_no,
-                f"unrecognized content: {line!r} (expected a heading, '- [ ] option', or blank line)",
+                f"unrecognized content: {line!r}"
+                " (expected a heading, '- [ ] option', or blank line)",
             )
     return exam

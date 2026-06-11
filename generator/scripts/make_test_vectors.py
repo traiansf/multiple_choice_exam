@@ -16,16 +16,36 @@ from mcexam.select import build_variant
 RAW_SEEDS = [0, 1, 42, 123456789, 2**64 - 1]
 
 VARIANT_CASES = [
-    {"seed": 0, "sections": {"easy": 5, "medium": 4, "hard": 3},
-     "counts": {"easy": 2, "medium": 2, "hard": 1}, "m": 4},
-    {"seed": 1, "sections": {"easy": 5, "medium": 4, "hard": 3},
-     "counts": {"easy": 5, "medium": 4, "hard": 3}, "m": 4},
-    {"seed": 424242, "sections": {"easy": 30, "medium": 25, "hard": 15},
-     "counts": {"easy": 10, "medium": 8, "hard": 2}, "m": 5},
-    {"seed": 2**64 - 1, "sections": {"easy": 10, "medium": 10, "hard": 10},
-     "counts": {"easy": 3, "medium": 3, "hard": 3}, "m": 6},
-    {"seed": 987654321987654321, "sections": {"easy": 2, "medium": 2, "hard": 2},
-     "counts": {"easy": 0, "medium": 1, "hard": 2}, "m": 2},
+    {
+        "seed": 0,
+        "sections": {"easy": 5, "medium": 4, "hard": 3},
+        "counts": {"easy": 2, "medium": 2, "hard": 1},
+        "m": 4,
+    },
+    {
+        "seed": 1,
+        "sections": {"easy": 5, "medium": 4, "hard": 3},
+        "counts": {"easy": 5, "medium": 4, "hard": 3},
+        "m": 4,
+    },
+    {
+        "seed": 424242,
+        "sections": {"easy": 30, "medium": 25, "hard": 15},
+        "counts": {"easy": 10, "medium": 8, "hard": 2},
+        "m": 5,
+    },
+    {
+        "seed": 2**64 - 1,
+        "sections": {"easy": 10, "medium": 10, "hard": 10},
+        "counts": {"easy": 3, "medium": 3, "hard": 3},
+        "m": 6,
+    },
+    {
+        "seed": 987654321987654321,
+        "sections": {"easy": 2, "medium": 2, "hard": 2},
+        "counts": {"easy": 0, "medium": 1, "hard": 2},
+        "m": 2,
+    },
 ]
 
 

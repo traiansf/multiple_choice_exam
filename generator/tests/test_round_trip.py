@@ -1,11 +1,10 @@
 """Integration backstop: generate a variant plan from a known seed, synthesize a
 sheet of known marks, grade it with the documented mapping, assert the score."""
 
-from samples import SAMPLE_MD
-
 from mcexam.keyfile import build_key
 from mcexam.select import build_variant
 from mcexam.validator import load_exam
+from samples import SAMPLE_MD
 
 
 def grade(plan, answer_key: list[int], marks: list[int]) -> list[bool]:
@@ -19,9 +18,7 @@ def grade(plan, answer_key: list[int], marks: list[int]) -> list[bool]:
 
 def test_round_trip_known_marks() -> None:
     exam = load_exam(SAMPLE_MD)
-    plan = build_variant(
-        424242, exam.section_sizes(), {"easy": 2, "medium": 2, "hard": 1}, 4
-    )
+    plan = build_variant(424242, exam.section_sizes(), {"easy": 2, "medium": 2, "hard": 1}, 4)
     answer_key = build_key(exam, "00000000")["answer_key"]
 
     # Student answers correctly on even sheet rows, deliberately wrong on odd rows.
@@ -38,11 +35,7 @@ def test_round_trip_known_marks() -> None:
 def test_round_trip_all_correct_any_seed() -> None:
     exam = load_exam(SAMPLE_MD)
     for seed in (0, 1, 2**64 - 1, 555):
-        plan = build_variant(
-            seed, exam.section_sizes(), {"easy": 3, "medium": 3, "hard": 2}, 4
-        )
+        plan = build_variant(seed, exam.section_sizes(), {"easy": 3, "medium": 3, "hard": 2}, 4)
         answer_key = build_key(exam, "00000000")["answer_key"]
-        marks = [
-            sq.option_perm.index(answer_key[sq.global_index]) for sq in plan.sheet
-        ]
+        marks = [sq.option_perm.index(answer_key[sq.global_index]) for sq in plan.sheet]
         assert all(grade(plan, answer_key, marks))

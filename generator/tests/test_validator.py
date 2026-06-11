@@ -1,7 +1,7 @@
 import pytest
-from samples import SAMPLE_MD
 
 from mcexam.validator import ValidationError, load_exam
+from samples import SAMPLE_MD
 
 
 def test_valid_sample_builds_exam() -> None:
