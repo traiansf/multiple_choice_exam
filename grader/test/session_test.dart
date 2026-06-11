@@ -183,6 +183,73 @@ void main() {
     expect(() => keyOnly.processSheet(correctSheet()), throwsStateError);
   });
 
+  group('visual confirmation (issue #5)', () {
+    const pngMagic = [0x89, 0x50, 0x4E, 0x47];
+
+    test('graded sheet exposes reference and scanned PNGs', () {
+      final session = GraderSession()
+        ..loadKey(keyJson)
+        ..setQr(qrRaw);
+      session.processSheet(correctSheet());
+      expect(session.referenceSheetPng, isNotNull);
+      expect(session.scannedSheetPng, isNotNull);
+      expect(session.referenceSheetPng!.sublist(0, 4), pngMagic);
+      expect(session.scannedSheetPng!.sublist(0, 4), pngMagic);
+    });
+
+    test('review-flagged sheet exposes no comparison images', () {
+      final session = GraderSession()
+        ..loadKey(keyJson)
+        ..setQr(qrRaw);
+      session.processSheet(
+        buildSheetImage(
+          rows: 5,
+          optionsPerQuestion: 4,
+          filledByRow: {
+            0: [3],
+            1: [1, 2],
+            2: [0],
+            3: [2],
+            4: [3],
+          },
+        ),
+      );
+      expect(session.omrResult!.needsReview, isTrue);
+      expect(session.referenceSheetPng, isNull);
+      expect(session.scannedSheetPng, isNull);
+    });
+
+    test('confirm lifecycle: false -> confirmed -> reset by nextSheet', () {
+      final session = GraderSession()
+        ..loadKey(keyJson)
+        ..setQr(qrRaw);
+      session.processSheet(correctSheet());
+      expect(session.confirmed, isFalse);
+      session.confirmResult();
+      expect(session.confirmed, isTrue);
+      session.nextSheet();
+      expect(session.confirmed, isFalse);
+      expect(session.referenceSheetPng, isNull);
+      expect(session.scannedSheetPng, isNull);
+    });
+
+    test('confirmResult without a grade throws a StateError', () {
+      final session = GraderSession()..loadKey(keyJson);
+      expect(session.confirmResult, throwsStateError);
+    });
+
+    test('retakeSheet clears the comparison images and confirmation', () {
+      final session = GraderSession()
+        ..loadKey(keyJson)
+        ..setQr(qrRaw);
+      session.processSheet(correctSheet());
+      session.confirmResult();
+      session.retakeSheet();
+      expect(session.referenceSheetPng, isNull);
+      expect(session.confirmed, isFalse);
+    });
+  });
+
   test('notifies listeners on every transition', () {
     final session = GraderSession();
     var notifications = 0;

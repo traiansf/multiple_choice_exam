@@ -15,6 +15,7 @@ import 'keyfile.dart';
 import 'omr.dart';
 import 'qr_scan.dart';
 import 'select.dart' show sectionKeys;
+import 'sheet_render.dart';
 
 enum SessionStage {
   /// No answer key loaded yet.
@@ -36,12 +37,26 @@ class GraderSession extends ChangeNotifier {
   OmrResult? _omr;
   grading.GradeResult? _grade;
   String? _lastError;
+  Uint8List? _referencePng;
+  Uint8List? _scannedPng;
+  bool _confirmed = false;
 
   AnswerKey? get answerKey => _key;
   QrPayload? get qrPayload => _payload;
   OmrResult? get omrResult => _omr;
   grading.GradeResult? get gradeResult => _grade;
   String? get lastError => _lastError;
+
+  /// PNG of the generated reference sheet (correct answers filled, wrong
+  /// rows outlined in red); null unless the current sheet graded cleanly.
+  Uint8List? get referenceSheetPng => _referencePng;
+
+  /// PNG of the scanned page with the same wrong-row outlines.
+  Uint8List? get scannedSheetPng => _scannedPng;
+
+  /// Whether the user confirmed the displayed scoring. (Issue #4 will
+  /// record the grade at confirmation time.)
+  bool get confirmed => _confirmed;
 
   SessionStage get stage {
     if (_key == null) return SessionStage.needKey;
@@ -68,6 +83,9 @@ class GraderSession extends ChangeNotifier {
     _payload = null;
     _omr = null;
     _grade = null;
+    _referencePng = null;
+    _scannedPng = null;
+    _confirmed = false;
     _lastError = null;
     notifyListeners();
     return true;
@@ -108,6 +126,9 @@ class GraderSession extends ChangeNotifier {
     _payload = decoded;
     _omr = null;
     _grade = null;
+    _referencePng = null;
+    _scannedPng = null;
+    _confirmed = false;
     _lastError = null;
     notifyListeners();
     return true;
@@ -151,6 +172,8 @@ class GraderSession extends ChangeNotifier {
     _omr = detected;
     if (detected.needsReview) {
       _grade = null;
+      _referencePng = null;
+      _scannedPng = null;
       _lastError = null;
       notifyListeners();
       return true;
@@ -171,15 +194,51 @@ class GraderSession extends ChangeNotifier {
       notifyListeners();
       return false;
     }
+    _buildComparison(pageImage, key.optionsPerQuestion);
     _lastError = null;
     notifyListeners();
     return true;
+  }
+
+  /// Builds the side-by-side confirmation images: the generated reference
+  /// sheet (correct answers filled) and the scanned page, both with the
+  /// wrongly-answered rows outlined in red.
+  void _buildComparison(img.Image pageImage, int optionsPerQuestion) {
+    final grade = _grade!;
+    final wrongRows = [
+      for (final question in grade.perQuestion)
+        if (!question.correct) question.sheetNumber - 1,
+    ];
+    final reference = renderReferenceSheet(
+      correctPositions: [
+        for (final question in grade.perQuestion) question.correctPosition,
+      ],
+      optionsPerQuestion: optionsPerQuestion,
+    );
+    annotateWrongRows(reference, wrongRows, optionsPerQuestion);
+    final scanned = pageImage.clone();
+    annotateWrongRows(scanned, wrongRows, optionsPerQuestion);
+    _referencePng = Uint8List.fromList(img.encodePng(reference));
+    _scannedPng = Uint8List.fromList(img.encodePng(scanned));
+  }
+
+  /// Marks the displayed scoring as user-confirmed. (Issue #4 records the
+  /// grade here.)
+  void confirmResult() {
+    if (_grade == null) {
+      throw StateError('confirmResult called without a graded sheet');
+    }
+    _confirmed = true;
+    notifyListeners();
   }
 
   /// Clears the sheet result to recapture the same student's sheet.
   void retakeSheet() {
     _omr = null;
     _grade = null;
+    _referencePng = null;
+    _scannedPng = null;
+    _confirmed = false;
     _lastError = null;
     notifyListeners();
   }
@@ -189,6 +248,9 @@ class GraderSession extends ChangeNotifier {
     _payload = null;
     _omr = null;
     _grade = null;
+    _referencePng = null;
+    _scannedPng = null;
+    _confirmed = false;
     _lastError = null;
     notifyListeners();
   }
