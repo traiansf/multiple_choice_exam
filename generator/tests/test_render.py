@@ -128,3 +128,16 @@ def test_render_is_byte_reproducible(tmp_path) -> None:
     render_variant(a, exam, plan, png, 1)
     render_variant(b, exam, plan, png, 1)
     assert a.read_bytes() == b.read_bytes()
+
+
+def test_every_page_carries_the_variant_qr(tmp_path) -> None:
+    """Issue #9: separated pages must re-identify their variant, so the QR
+    (and the variant number) is printed on every page, not just the answer
+    sheet. With pageCompression=0 each image placement is one 'Do' operator."""
+    exam = load_exam(SAMPLE_MD)
+    plan = build_variant(1, exam.section_sizes(), {"easy": 3, "medium": 3, "hard": 2}, 4)
+    out = tmp_path / "v.pdf"
+    pages = render_variant(out, exam, plan, qr_png("v1|1|1|3|3|2|deadbeef"), 1)
+    data = out.read_bytes()
+    assert pages >= 2
+    assert data.count(b" Do") == pages
