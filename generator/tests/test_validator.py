@@ -63,6 +63,15 @@ def test_question_with_too_few_options() -> None:
     expect_error(text, "at least 2 options")
 
 
+def test_more_than_max_options_rejected() -> None:
+    options = "\n".join(["- [x] a0"] + [f"- [ ] a{i}" for i in range(1, 11)])
+    text = _replace(
+        "### What is 2 + 2?\n- [ ] 3\n- [x] 4\n- [ ] 5\n- [ ] 6\n",
+        f"### What is 2 + 2?\n{options}\n",
+    )
+    expect_error(text, "at most 10 options")
+
+
 def test_empty_section() -> None:
     text = SAMPLE_MD.split("## Hard")[0] + "## Hard\n"
     expect_error(text, "has no questions")

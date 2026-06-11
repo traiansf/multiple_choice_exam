@@ -35,6 +35,11 @@ def test_unrecognized_content_is_error() -> None:
         parse("# T\n\n## Easy\n\nsome prose\n")
 
 
+def test_crlf_input_parses_identically_to_lf() -> None:
+    crlf = SAMPLE_MD.replace("\n", "\r\n")
+    assert parse(crlf) == parse(SAMPLE_MD)
+
+
 def test_blank_lines_and_trailing_whitespace_ignored() -> None:
     raw = parse("# T  \n\n\n## Easy   \n\n### Q?  \n- [x] a\n- [ ] b   \n")
     assert raw.titles[0][1] == "T"

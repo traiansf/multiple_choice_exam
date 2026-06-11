@@ -85,7 +85,12 @@ def lint(input_path: Path) -> None:
 @click.option("--medium", type=click.IntRange(min=0), default=None)
 @click.option("--hard", type=click.IntRange(min=0), default=None)
 @click.option("--questions", type=click.IntRange(min=1), default=None)
-@click.option("--base-seed", type=int, default=None, help="Fix for a reproducible run.")
+@click.option(
+    "--base-seed",
+    type=click.IntRange(min=0, max=2**64 - 1),
+    default=None,
+    help="Unsigned 64-bit seed; fix for a reproducible run.",
+)
 @click.option(
     "--out",
     "out_dir",
@@ -116,7 +121,10 @@ def generate(
         base_seed = secrets.randbits(64)
     click.echo(f"base seed: {base_seed}")
 
-    out_dir.mkdir(parents=True, exist_ok=True)
+    try:
+        out_dir.mkdir(parents=True, exist_ok=True)
+    except (FileExistsError, NotADirectoryError) as exc:
+        raise click.ClickException(f"--out {out_dir} exists and is not a directory") from exc
     fingerprint = source_fingerprint(text)
     write_key(out_dir / "answer-key.json", exam, fingerprint)
     for variant_id, seed in enumerate(variant_seeds(base_seed, variants), start=1):
@@ -146,7 +154,12 @@ def generate(
     required=True,
     help="Output Markdown file.",
 )
-@click.option("--seed", type=int, default=None, help="Fix for a reproducible shuffle.")
+@click.option(
+    "--seed",
+    type=click.IntRange(min=0, max=2**64 - 1),
+    default=None,
+    help="Unsigned 64-bit seed; fix for a reproducible shuffle.",
+)
 def scramble(input_path: Path, out_path: Path, seed: int | None) -> None:
     """Write a shuffled copy of the question bank (Markdown only, never a key)."""
     _, exam = _load(input_path)

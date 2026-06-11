@@ -5,6 +5,10 @@ from dataclasses import dataclass
 SECTION_NAMES = ("Easy", "Medium", "Hard")
 SECTION_KEYS = ("easy", "medium", "hard")
 
+# The OMR bubble grid labels options A..J; more options per question than this
+# cannot be rendered (validator rejects them at lint time).
+MAX_OPTIONS = 10
+
 
 @dataclass(frozen=True)
 class Question:

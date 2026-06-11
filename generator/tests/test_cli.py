@@ -69,7 +69,12 @@ def test_generate_writes_pdfs_and_key(tmp_path) -> None:
     ]
     key = json.loads((out / "answer-key.json").read_text())
     assert key["version"] == 1
+    assert key["exam_title"] == "Sample Exam"
+    assert key["options_per_question"] == 4
     assert key["sections"] == {"easy": 3, "medium": 3, "hard": 2}
+    assert key["answer_key"] == [1, 2, 2, 1, 0, 2, 1, 1]
+    assert len(key["source_fingerprint"]) == 8
+    int(key["source_fingerprint"], 16)
 
 
 def test_generate_reproducible_with_base_seed(tmp_path) -> None:
@@ -117,6 +122,104 @@ def test_generate_questions_conflicting_with_explicit_counts(tmp_path) -> None:
         ],
     )
     assert result.exit_code != 0
+    assert "does not match" in result.output
+
+
+def test_generate_partial_explicit_counts_is_error(tmp_path) -> None:
+    result = CliRunner().invoke(
+        main, ["generate", "--input", str(write_sample(tmp_path)), "--easy", "2"]
+    )
+    assert result.exit_code != 0
+    assert "must be given together" in result.output
+
+
+def test_generate_all_zero_counts_is_error(tmp_path) -> None:
+    result = CliRunner().invoke(
+        main,
+        [
+            "generate",
+            "--input",
+            str(write_sample(tmp_path)),
+            "--easy",
+            "0",
+            "--medium",
+            "0",
+            "--hard",
+            "0",
+        ],
+    )
+    assert result.exit_code != 0
+    assert "at least one" in result.output.lower()
+
+
+def test_generate_without_any_count_option_is_error(tmp_path) -> None:
+    result = CliRunner().invoke(
+        main, ["generate", "--input", str(write_sample(tmp_path)), "--variants", "2"]
+    )
+    assert result.exit_code != 0
+    assert "--questions" in result.output
+
+
+def test_generate_negative_base_seed_rejected(tmp_path) -> None:
+    result = CliRunner().invoke(
+        main,
+        [
+            "generate",
+            "--input",
+            str(write_sample(tmp_path)),
+            "--questions",
+            "5",
+            "--base-seed",
+            "-1",
+        ],
+    )
+    assert result.exit_code != 0
+
+
+def test_generate_full_draw_selects_every_question(tmp_path) -> None:
+    out = tmp_path / "build"
+    result = CliRunner().invoke(
+        main,
+        [
+            "generate",
+            "--input",
+            str(write_sample(tmp_path)),
+            "--easy",
+            "3",
+            "--medium",
+            "3",
+            "--hard",
+            "2",
+            "--base-seed",
+            "9",
+            "--out",
+            str(out),
+        ],
+    )
+    assert result.exit_code == 0, result.output
+    assert (out / "variant-001.pdf").exists()
+
+
+def test_generate_out_pointing_at_file_is_clean_error(tmp_path) -> None:
+    blocker = tmp_path / "not-a-dir"
+    blocker.write_text("occupied")
+    result = CliRunner().invoke(
+        main,
+        [
+            "generate",
+            "--input",
+            str(write_sample(tmp_path)),
+            "--questions",
+            "5",
+            "--base-seed",
+            "1",
+            "--out",
+            str(blocker),
+        ],
+    )
+    assert result.exit_code != 0
+    assert "Error" in result.output
+    assert "Traceback" not in result.output
 
 
 def test_generate_count_exceeding_section(tmp_path) -> None:

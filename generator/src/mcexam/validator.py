@@ -1,7 +1,7 @@
 """Semantic validation: RawExam -> Exam. This module is the executable spec of
 the exam Markdown format (mirrored in README 'The exam Markdown format')."""
 
-from .model import SECTION_KEYS, SECTION_NAMES, Exam, Question
+from .model import MAX_OPTIONS, SECTION_KEYS, SECTION_NAMES, Exam, Question
 from .parser import RawExam, RawSection, parse
 
 
@@ -46,6 +46,12 @@ def validate(raw: RawExam) -> Exam:
                 errors.append(
                     f"line {question.line_no}: question '{question.prompt}'"
                     " needs at least 2 options"
+                )
+            if len(question.options) > MAX_OPTIONS:
+                errors.append(
+                    f"line {question.line_no}: question '{question.prompt}'"
+                    f" has {len(question.options)} options; the OMR bubble grid"
+                    f" supports at most {MAX_OPTIONS} options per question"
                 )
             if checked != 1:
                 errors.append(

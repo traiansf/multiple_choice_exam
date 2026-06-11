@@ -94,6 +94,11 @@ def render_variant(
     """Write the variant PDF; returns the page count."""
     rows = len(plan.sheet)
     m = exam.options_per_question
+    if m > len(OPTION_LETTERS):
+        raise ValueError(
+            f"{m} options per question exceed the {len(OPTION_LETTERS)} option"
+            " labels the bubble grid supports (A-J)"
+        )
     if rows > max_rows(m):
         raise ValueError(
             f"{rows} questions exceed the single-page answer sheet capacity of"
@@ -122,11 +127,20 @@ def _draw_answer_sheet(
         qr_size,
         qr_size,
     )
+    # Keep the title clear of the QR region: wrap into the space left of it,
+    # at most two lines, ellipsize the rest.
+    title_width = PAGE_W - 2 * MARGIN - qr_size - 6 * mm
+    title_lines = simpleSplit(title, font, 16, title_width)
+    if len(title_lines) > 2:
+        title_lines = [title_lines[0], title_lines[1].rstrip() + " …"]
     canvas.setFont(font, 16)
-    canvas.drawString(MARGIN, PAGE_H - 25 * mm, title)
+    y_title = PAGE_H - 25 * mm
+    for line in title_lines:
+        canvas.drawString(MARGIN, y_title, line)
+        y_title -= 7 * mm
     canvas.setFont(font, 12)
-    canvas.drawString(MARGIN, PAGE_H - 33 * mm, f"Variant {variant_id:03d}")
-    canvas.drawString(MARGIN, PAGE_H - 45 * mm, "Name: " + "_" * 40)
+    canvas.drawString(MARGIN, y_title - 1 * mm, f"Variant {variant_id:03d}")
+    canvas.drawString(MARGIN, PAGE_H - 48 * mm, "Name: " + "_" * 40)
 
     canvas.setFont(font, 9)
     blocks = (rows + ROWS_PER_BLOCK - 1) // ROWS_PER_BLOCK

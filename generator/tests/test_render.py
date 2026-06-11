@@ -59,6 +59,47 @@ def test_render_writes_pdf(tmp_path) -> None:
     assert len(data) > 1000
 
 
+def test_render_long_title_does_not_reach_qr(tmp_path) -> None:
+    long_title = (
+        "Introduction to Quantum Mechanics and Computational Physics"
+        " for Engineers — Midterm Examination, Summer Session"
+    )
+    text = SAMPLE_MD.replace("# Sample Exam", f"# {long_title}")
+    exam = load_exam(text)
+    plan = build_variant(1, exam.section_sizes(), {"easy": 2, "medium": 2, "hard": 1}, 4)
+    out = tmp_path / "long-title.pdf"
+    render_variant(out, exam, plan, qr_png("v1|1|1|2|2|1|deadbeef"), 1)
+    assert out.read_bytes().startswith(b"%PDF")
+
+
+def test_render_rejects_more_options_than_letters(tmp_path) -> None:
+    import pytest
+
+    from mcexam.model import Exam, Question
+
+    question = Question("Q?", tuple(f"opt{i}" for i in range(11)), 0)
+    exam = Exam(
+        title="T",
+        sections={"easy": (question,), "medium": (question,), "hard": (question,)},
+    )
+    plan = build_variant(1, exam.section_sizes(), {"easy": 1, "medium": 1, "hard": 1}, 11)
+    with pytest.raises(ValueError, match="option"):
+        render_variant(tmp_path / "x.pdf", exam, plan, qr_png("v1|1|1|1|1|1|deadbeef"), 1)
+
+
+def test_render_unicode_math_content(tmp_path) -> None:
+    text = SAMPLE_MD.replace(
+        "### Evaluate the integral of 2x from 0 to 3.",
+        "### Evaluate ∫₀³ 2x dx — limit as n → ∞ of (1 + 1/n)ⁿ?",
+    )
+    exam = load_exam(text)
+    plan = build_variant(3, exam.section_sizes(), {"easy": 3, "medium": 3, "hard": 2}, 4)
+    out = tmp_path / "unicode.pdf"
+    pages = render_variant(out, exam, plan, qr_png("v1|1|3|3|3|2|deadbeef"), 1)
+    assert pages >= 2
+    assert out.read_bytes().startswith(b"%PDF")
+
+
 def test_render_is_byte_reproducible(tmp_path) -> None:
     exam = load_exam(SAMPLE_MD)
     plan = build_variant(1, exam.section_sizes(), {"easy": 2, "medium": 2, "hard": 1}, 4)
