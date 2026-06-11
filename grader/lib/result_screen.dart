@@ -22,6 +22,20 @@ class _ResultScreenState extends State<ResultScreen> {
   /// second tap a no-op instead of acting on the already-advanced session.
   bool _submitted = false;
 
+  /// Roster name the grader read off the paper (issue #8).
+  String? _student;
+
+  @override
+  void initState() {
+    super.initState();
+    final payload = widget.session.qrPayload;
+    if (payload != null) {
+      _student = widget.session.gradeBook
+          .recordFor(payload.variantId)
+          ?.studentName;
+    }
+  }
+
   void _finish(VoidCallback action, String popValue) {
     if (_submitted) return;
     _submitted = true;
@@ -47,38 +61,62 @@ class _ResultScreenState extends State<ResultScreen> {
               total: omr.rows.length,
               scanPng: session.scannedSheetPng,
               onSubmit: (score) => _finish(() {
-                session.submitManualGrade(score);
+                session.submitManualGrade(score, studentName: _student);
                 session.nextSheet();
               }, 'next'),
             )
           : _GradeView(session: session),
       bottomNavigationBar: Padding(
         padding: const EdgeInsets.all(16),
-        child: Row(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
           children: [
-            Expanded(
-              child: OutlinedButton.icon(
-                icon: const Icon(Icons.camera_alt),
-                label: const Text('Retake sheet'),
-                onPressed: () => _finish(session.retakeSheet, 'retake'),
+            if (session.roster.isNotEmpty) ...[
+              DropdownButtonFormField<String?>(
+                initialValue: _student,
+                decoration: const InputDecoration(
+                  labelText: 'Student (from the name on the paper)',
+                  border: OutlineInputBorder(),
+                ),
+                items: [
+                  const DropdownMenuItem<String?>(
+                    value: null,
+                    child: Text('— no student —'),
+                  ),
+                  for (final name in session.unassignedStudents)
+                    DropdownMenuItem<String?>(value: name, child: Text(name)),
+                ],
+                onChanged: (value) => setState(() => _student = value),
               ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: needsReview
-                  ? FilledButton.icon(
-                      icon: const Icon(Icons.qr_code_scanner),
-                      label: const Text('Next sheet'),
-                      onPressed: () => _finish(session.nextSheet, 'next'),
-                    )
-                  : FilledButton.icon(
-                      icon: const Icon(Icons.check),
-                      label: const Text('Confirm — next sheet'),
-                      onPressed: () => _finish(() {
-                        session.confirmResult();
-                        session.nextSheet();
-                      }, 'next'),
-                    ),
+              const SizedBox(height: 12),
+            ],
+            Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton.icon(
+                    icon: const Icon(Icons.camera_alt),
+                    label: const Text('Retake sheet'),
+                    onPressed: () => _finish(session.retakeSheet, 'retake'),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: needsReview
+                      ? FilledButton.icon(
+                          icon: const Icon(Icons.qr_code_scanner),
+                          label: const Text('Next sheet'),
+                          onPressed: () => _finish(session.nextSheet, 'next'),
+                        )
+                      : FilledButton.icon(
+                          icon: const Icon(Icons.check),
+                          label: const Text('Confirm — next sheet'),
+                          onPressed: () => _finish(() {
+                            session.confirmResult(studentName: _student);
+                            session.nextSheet();
+                          }, 'next'),
+                        ),
+                ),
+              ],
             ),
           ],
         ),

@@ -72,6 +72,21 @@ class HomeScreen extends StatelessWidget {
     }
   }
 
+  Future<void> _loadRoster(BuildContext context) async {
+    const typeGroup = XTypeGroup(
+      label: 'student roster',
+      extensions: ['txt', 'csv'],
+    );
+    final file = await openFile(acceptedTypeGroups: const [typeGroup]);
+    if (file == null) return;
+    final text = utf8.decode(await file.readAsBytes());
+    if (!session.loadRoster(text) && context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Invalid roster: ${session.lastError}')),
+      );
+    }
+  }
+
   Future<void> _gradeFlow(BuildContext context) async {
     final navigator = Navigator.of(context);
     if (session.stage == SessionStage.needQr) {
@@ -153,6 +168,16 @@ class HomeScreen extends StatelessWidget {
                     key == null ? 'Load answer key' : 'Load a different key',
                   ),
                   onPressed: () => _loadKey(context),
+                ),
+                const SizedBox(height: 8),
+                OutlinedButton.icon(
+                  icon: const Icon(Icons.people),
+                  label: Text(
+                    session.roster.isEmpty
+                        ? 'Load student roster (optional)'
+                        : 'Roster: ${session.roster.length} students',
+                  ),
+                  onPressed: () => _loadRoster(context),
                 ),
                 const SizedBox(height: 8),
                 FilledButton.icon(

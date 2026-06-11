@@ -58,7 +58,12 @@ class RecordsScreen extends StatelessWidget {
                 title: Text(
                   'Variant ${record.variantId.toString().padLeft(3, '0')}',
                 ),
-                subtitle: record.manual ? const Text('graded manually') : null,
+                subtitle: switch ((record.studentName, record.manual)) {
+                  (null, false) => null,
+                  (null, true) => const Text('graded manually'),
+                  (final name?, false) => Text(name),
+                  (final name?, true) => Text('$name — graded manually'),
+                },
                 trailing: Text(
                   '${record.score} / ${record.total}'
                   '  (${record.percent.toStringAsFixed(1)}%)',

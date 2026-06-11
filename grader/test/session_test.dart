@@ -455,7 +455,10 @@ void main() {
   group('student roster (issue #8)', () {
     test('loadRoster parses, trims, dedupes, and rejects empty input', () {
       final session = GraderSession();
-      expect(session.loadRoster('Ada Lovelace\n  Grace Hopper  \n\nAda Lovelace\n'), isTrue);
+      expect(
+        session.loadRoster('Ada Lovelace\n  Grace Hopper  \n\nAda Lovelace\n'),
+        isTrue,
+      );
       expect(session.roster, ['Ada Lovelace', 'Grace Hopper']);
       expect(session.loadRoster('   \n\n'), isFalse);
       expect(session.lastError, contains('no names'));
@@ -508,24 +511,27 @@ void main() {
       expect(record.manual, isTrue);
     });
 
-    test('unassignedStudents excludes other variants but keeps the current', () {
-      final session = GraderSession()
-        ..loadRoster('Ada\nGrace\nLin')
-        ..loadKey(keyJson)
-        ..setQr(qrRaw);
-      session.processSheet(correctSheet());
-      session.confirmResult(studentName: 'Ada');
-      session.nextSheet();
+    test(
+      'unassignedStudents excludes other variants but keeps the current',
+      () {
+        final session = GraderSession()
+          ..loadRoster('Ada\nGrace\nLin')
+          ..loadKey(keyJson)
+          ..setQr(qrRaw);
+        session.processSheet(correctSheet());
+        session.confirmResult(studentName: 'Ada');
+        session.nextSheet();
 
-      // A different variant: Ada is taken.
-      session.setQr('v1|2|0|2|2|1|fp012345');
-      expect(session.unassignedStudents, ['Grace', 'Lin']);
+        // A different variant: Ada is taken.
+        session.setQr('v1|2|0|2|2|1|fp012345');
+        expect(session.unassignedStudents, ['Grace', 'Lin']);
 
-      // Back to variant 1: its own assignment stays selectable.
-      session.nextSheet();
-      session.setQr(qrRaw);
-      expect(session.unassignedStudents, ['Ada', 'Grace', 'Lin']);
-    });
+        // Back to variant 1: its own assignment stays selectable.
+        session.nextSheet();
+        session.setQr(qrRaw);
+        expect(session.unassignedStudents, ['Ada', 'Grace', 'Lin']);
+      },
+    );
 
     test('re-grading a variant with a different student replaces it', () {
       final session = GraderSession()
