@@ -209,6 +209,24 @@ void main() {
     expect(find.text('Confirm — next sheet'), findsNothing);
   });
 
+  testWidgets('double-tapping Confirm during the pop animation is harmless', (
+    tester,
+  ) async {
+    final session = GraderSession()
+      ..loadKey(keyJson)
+      ..setQr(qrRaw);
+    session.processSheet(
+      sheetWith({
+        for (var row = 0; row < 5; row++) row: [correctPositions[row]],
+      }),
+    );
+    await tester.pumpWidget(MaterialApp(home: ResultScreen(session: session)));
+    await tester.tap(find.text('Confirm — next sheet'));
+    await tester.tap(find.text('Confirm — next sheet'), warnIfMissed: false);
+    expect(tester.takeException(), isNull);
+    expect(session.stage, SessionStage.needQr);
+  });
+
   testWidgets('confirm button marks the result confirmed before advancing', (
     tester,
   ) async {

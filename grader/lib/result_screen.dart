@@ -8,13 +8,30 @@ import 'package:flutter/material.dart';
 
 import 'session.dart';
 
-class ResultScreen extends StatelessWidget {
+class ResultScreen extends StatefulWidget {
   const ResultScreen({super.key, required this.session});
 
   final GraderSession session;
 
   @override
+  State<ResultScreen> createState() => _ResultScreenState();
+}
+
+class _ResultScreenState extends State<ResultScreen> {
+  /// The buttons stay tappable during the pop animation; this guard makes a
+  /// second tap a no-op instead of acting on the already-advanced session.
+  bool _submitted = false;
+
+  void _finish(VoidCallback action, String popValue) {
+    if (_submitted) return;
+    _submitted = true;
+    action();
+    Navigator.of(context).pop(popValue);
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final session = widget.session;
     final omr = session.omrResult;
     final grade = session.gradeResult;
     final needsReview = omr?.needsReview ?? false;
@@ -31,36 +48,28 @@ class ResultScreen extends StatelessWidget {
         padding: const EdgeInsets.all(16),
         child: Row(
           children: [
-            if (needsReview || grade != null)
-              Expanded(
-                child: OutlinedButton.icon(
-                  icon: const Icon(Icons.camera_alt),
-                  label: const Text('Retake sheet'),
-                  onPressed: () {
-                    session.retakeSheet();
-                    Navigator.of(context).pop('retake');
-                  },
-                ),
+            Expanded(
+              child: OutlinedButton.icon(
+                icon: const Icon(Icons.camera_alt),
+                label: const Text('Retake sheet'),
+                onPressed: () => _finish(session.retakeSheet, 'retake'),
               ),
+            ),
             const SizedBox(width: 12),
             Expanded(
               child: needsReview
                   ? FilledButton.icon(
                       icon: const Icon(Icons.qr_code_scanner),
                       label: const Text('Next sheet'),
-                      onPressed: () {
-                        session.nextSheet();
-                        Navigator.of(context).pop('next');
-                      },
+                      onPressed: () => _finish(session.nextSheet, 'next'),
                     )
                   : FilledButton.icon(
                       icon: const Icon(Icons.check),
                       label: const Text('Confirm — next sheet'),
-                      onPressed: () {
+                      onPressed: () => _finish(() {
                         session.confirmResult();
                         session.nextSheet();
-                        Navigator.of(context).pop('next');
-                      },
+                      }, 'next'),
                     ),
             ),
           ],

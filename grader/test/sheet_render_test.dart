@@ -66,6 +66,39 @@ void main() {
     expect(stripHasRed(sheet, 2, 4), isFalse);
   });
 
+  test('reference sheet round-trips across two bubble blocks (30 rows)', () {
+    final positions = List<int>.generate(30, (i) => i % 4);
+    final sheet = renderReferenceSheet(
+      correctPositions: positions,
+      optionsPerQuestion: 4,
+    );
+    final result = detectMarks(sheet, rows: 30, optionsPerQuestion: 4);
+    expect(result.needsReview, isFalse);
+    expect(result.marks, positions);
+  });
+
+  test('reference sheet round-trips for five options per question', () {
+    const positions = [4, 0, 2];
+    final sheet = renderReferenceSheet(
+      correctPositions: positions,
+      optionsPerQuestion: 5,
+    );
+    final result = detectMarks(sheet, rows: 3, optionsPerQuestion: 5);
+    expect(result.marks, positions);
+  });
+
+  test('annotateWrongRows reaches second-block rows', () {
+    final positions = List<int>.generate(30, (i) => i % 4);
+    final sheet = renderReferenceSheet(
+      correctPositions: positions,
+      optionsPerQuestion: 4,
+    );
+    annotateWrongRows(sheet, const [25], 4);
+    expect(stripHasRed(sheet, 25, 4), isTrue);
+    expect(stripHasRed(sheet, 24, 4), isFalse);
+    expect(stripHasRed(sheet, 26, 4), isFalse);
+  });
+
   test('annotation does not disturb mark detection', () {
     final sheet = renderReferenceSheet(
       correctPositions: correctPositions,

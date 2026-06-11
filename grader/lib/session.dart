@@ -216,7 +216,12 @@ class GraderSession extends ChangeNotifier {
       optionsPerQuestion: optionsPerQuestion,
     );
     annotateWrongRows(reference, wrongRows, optionsPerQuestion);
-    final scanned = pageImage.clone();
+    // Downscale camera-resolution pages to the reference's width before the
+    // (synchronous) PNG encode: full-resolution encodes block the UI thread
+    // for hundreds of ms, and the comparison view never needs more pixels.
+    final scanned = pageImage.width > reference.width
+        ? img.copyResize(pageImage, width: reference.width)
+        : pageImage.clone();
     annotateWrongRows(scanned, wrongRows, optionsPerQuestion);
     _referencePng = Uint8List.fromList(img.encodePng(reference));
     _scannedPng = Uint8List.fromList(img.encodePng(scanned));

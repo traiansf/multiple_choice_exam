@@ -136,6 +136,9 @@ void main() {
     expect(session.stage, SessionStage.needQr);
     expect(session.gradeResult, isNull);
     expect(session.omrResult, isNull);
+    expect(session.referenceSheetPng, isNull);
+    expect(session.scannedSheetPng, isNull);
+    expect(session.confirmed, isFalse);
   });
 
   test('nextSheet returns to needQr and keeps the key', () {
@@ -186,15 +189,51 @@ void main() {
   group('visual confirmation (issue #5)', () {
     const pngMagic = [0x89, 0x50, 0x4E, 0x47];
 
-    test('graded sheet exposes reference and scanned PNGs', () {
+    test('graded sheet exposes distinct reference and scanned PNGs', () {
       final session = GraderSession()
         ..loadKey(keyJson)
         ..setQr(qrRaw);
-      session.processSheet(correctSheet());
+      session.processSheet(
+        buildSheetImage(
+          rows: 5,
+          optionsPerQuestion: 4,
+          filledByRow: {
+            0: [3],
+            1: [1],
+            2: [0],
+            3: [2],
+            4: [0], // wrong on purpose: the two images must differ
+          },
+        ),
+      );
       expect(session.referenceSheetPng, isNotNull);
       expect(session.scannedSheetPng, isNotNull);
       expect(session.referenceSheetPng!.sublist(0, 4), pngMagic);
       expect(session.scannedSheetPng!.sublist(0, 4), pngMagic);
+      expect(
+        session.referenceSheetPng,
+        isNot(equals(session.scannedSheetPng)),
+        reason: 'reference shows the correct mark, scan shows the wrong one',
+      );
+    });
+
+    test('camera-resolution scans are downscaled before encoding', () {
+      final session = GraderSession()
+        ..loadKey(keyJson)
+        ..setQr(qrRaw);
+      session.processSheet(
+        buildSheetImage(
+          rows: 5,
+          optionsPerQuestion: 4,
+          pxPerMm: 6, // 1260px wide, wider than the 840px reference
+          filledByRow: {
+            for (var row = 0; row < 5; row++) row: [correctPositions[row]],
+          },
+        ),
+      );
+      final scanned = img.decodePng(session.scannedSheetPng!)!;
+      final reference = img.decodePng(session.referenceSheetPng!)!;
+      expect(scanned.width, reference.width);
     });
 
     test('review-flagged sheet exposes no comparison images', () {
