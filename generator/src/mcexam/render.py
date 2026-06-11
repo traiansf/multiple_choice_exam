@@ -77,6 +77,18 @@ def registration_mark_positions() -> list[tuple[float, float]]:
     ]
 
 
+def title_lines(title: str, font: str, size: float, width: float) -> list[str]:
+    """Wrap the title to at most two lines that each fit in `width`; if it
+    needs more, trim the second line until it fits with a trailing ellipsis."""
+    lines = simpleSplit(title, font, size, width)
+    if len(lines) <= 2:
+        return lines
+    second = lines[1].rstrip()
+    while second and pdfmetrics.stringWidth(second + " …", font, size) > width:
+        second = second[:-1].rstrip()
+    return [lines[0], second + " …"]
+
+
 def _body_font() -> str:
     """DejaVu Sans if available (full Unicode for math symbols), else Helvetica."""
     if "ExamBody" in pdfmetrics.getRegisteredFontNames():
@@ -130,12 +142,9 @@ def _draw_answer_sheet(
     # Keep the title clear of the QR region: wrap into the space left of it,
     # at most two lines, ellipsize the rest.
     title_width = PAGE_W - 2 * MARGIN - qr_size - 6 * mm
-    title_lines = simpleSplit(title, font, 16, title_width)
-    if len(title_lines) > 2:
-        title_lines = [title_lines[0], title_lines[1].rstrip() + " …"]
     canvas.setFont(font, 16)
     y_title = PAGE_H - 25 * mm
-    for line in title_lines:
+    for line in title_lines(title, font, 16, title_width):
         canvas.drawString(MARGIN, y_title, line)
         y_title -= 7 * mm
     canvas.setFont(font, 12)

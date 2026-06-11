@@ -59,6 +59,26 @@ def test_render_writes_pdf(tmp_path) -> None:
     assert len(data) > 1000
 
 
+def test_title_lines_clamped_to_two_and_within_width() -> None:
+    from reportlab.pdfbase.pdfmetrics import stringWidth
+
+    from mcexam.render import _body_font, title_lines
+
+    font = _body_font()
+    width = 250.0  # points; narrow enough to force wrapping + ellipsis
+    title = (
+        "Introduction to Quantum Mechanics and Computational Physics"
+        " for Engineers — Midterm Examination, Summer Session"
+    )
+    lines = title_lines(title, font, 16, width)
+    assert 1 <= len(lines) <= 2
+    assert lines[-1].endswith("…")
+    for line in lines:
+        assert stringWidth(line, font, 16) <= width
+    short = title_lines("Short Title", font, 16, width)
+    assert short == ["Short Title"]
+
+
 def test_render_long_title_does_not_reach_qr(tmp_path) -> None:
     long_title = (
         "Introduction to Quantum Mechanics and Computational Physics"
