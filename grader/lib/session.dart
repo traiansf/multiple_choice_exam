@@ -63,6 +63,48 @@ class GraderSession extends ChangeNotifier {
   /// (after the UI's warning) when a new answer key is loaded.
   final GradeBook gradeBook = GradeBook();
 
+  List<String> _roster = const [];
+
+  /// The loaded student roster, in file order. Survives [loadKey] — a
+  /// roster describes the class, not one exam.
+  List<String> get roster => _roster;
+
+  /// Roster names not yet assigned to a grade — except the current
+  /// variant's own assignment, which stays selectable for re-grading.
+  List<String> get unassignedStudents {
+    final current = _payload == null
+        ? null
+        : gradeBook.recordFor(_payload!.variantId)?.studentName;
+    final taken = {
+      for (final record in gradeBook.records)
+        if (record.studentName != null) record.studentName!,
+    };
+    return [
+      for (final name in _roster)
+        if (!taken.contains(name) || name == current) name,
+    ];
+  }
+
+  /// Loads a roster: one student name per line; blank lines ignored,
+  /// duplicates collapsed.
+  bool loadRoster(String text) {
+    final names = <String>[];
+    final seen = <String>{};
+    for (final line in text.split('\n')) {
+      final name = line.trim();
+      if (name.isNotEmpty && seen.add(name)) names.add(name);
+    }
+    if (names.isEmpty) {
+      _lastError = 'The roster file contains no names.';
+      notifyListeners();
+      return false;
+    }
+    _roster = List.unmodifiable(names);
+    _lastError = null;
+    notifyListeners();
+    return true;
+  }
+
   SessionStage get stage {
     if (_key == null) return SessionStage.needKey;
     if (_payload == null) return SessionStage.needQr;
@@ -251,8 +293,9 @@ class GraderSession extends ChangeNotifier {
 
   /// Marks the displayed scoring as user-confirmed and records it in the
   /// grade book (replacing any earlier grade of the same variant — a
-  /// re-scan updates the score).
-  void confirmResult() {
+  /// re-scan updates the score). [studentName] is the roster name the
+  /// grader read off the paper, if any.
+  void confirmResult({String? studentName}) {
     final grade = _grade;
     if (grade == null) {
       throw StateError('confirmResult called without a graded sheet');
@@ -264,6 +307,7 @@ class GraderSession extends ChangeNotifier {
         score: grade.score,
         total: grade.total,
         recordedAt: DateTime.now(),
+        studentName: studentName,
       ),
     );
     notifyListeners();
@@ -273,7 +317,7 @@ class GraderSession extends ChangeNotifier {
   /// inspected the paper on the review screen and graded it manually. Only
   /// valid while the current sheet needs review — cleanly graded sheets go
   /// through [confirmResult].
-  void submitManualGrade(int score) {
+  void submitManualGrade(int score, {String? studentName}) {
     final payload = _payload;
     if (payload == null || !(_omr?.needsReview ?? false)) {
       throw StateError(
@@ -292,6 +336,7 @@ class GraderSession extends ChangeNotifier {
         total: total,
         recordedAt: DateTime.now(),
         manual: true,
+        studentName: studentName,
       ),
     );
     notifyListeners();
