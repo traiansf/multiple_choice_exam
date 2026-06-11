@@ -22,6 +22,20 @@ class _ResultScreenState extends State<ResultScreen> {
   /// second tap a no-op instead of acting on the already-advanced session.
   bool _submitted = false;
 
+  /// Roster name the grader read off the paper (issue #8).
+  String? _student;
+
+  @override
+  void initState() {
+    super.initState();
+    final payload = widget.session.qrPayload;
+    if (payload != null) {
+      _student = widget.session.gradeBook
+          .recordFor(payload.variantId)
+          ?.studentName;
+    }
+  }
+
   void _finish(VoidCallback action, String popValue) {
     if (_submitted) return;
     _submitted = true;
@@ -47,38 +61,80 @@ class _ResultScreenState extends State<ResultScreen> {
               total: omr.rows.length,
               scanPng: session.scannedSheetPng,
               onSubmit: (score) => _finish(() {
-                session.submitManualGrade(score);
+                session.submitManualGrade(score, studentName: _student);
                 session.nextSheet();
               }, 'next'),
             )
           : _GradeView(session: session),
       bottomNavigationBar: Padding(
         padding: const EdgeInsets.all(16),
-        child: Row(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
           children: [
-            Expanded(
-              child: OutlinedButton.icon(
-                icon: const Icon(Icons.camera_alt),
-                label: const Text('Retake sheet'),
-                onPressed: () => _finish(session.retakeSheet, 'retake'),
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: needsReview
-                  ? FilledButton.icon(
-                      icon: const Icon(Icons.qr_code_scanner),
-                      label: const Text('Next sheet'),
-                      onPressed: () => _finish(session.nextSheet, 'next'),
-                    )
-                  : FilledButton.icon(
-                      icon: const Icon(Icons.check),
-                      label: const Text('Confirm — next sheet'),
-                      onPressed: () => _finish(() {
-                        session.confirmResult();
-                        session.nextSheet();
-                      }, 'next'),
+            if (session.roster.isNotEmpty) ...[
+              Builder(
+                builder: (context) {
+                  final available = session.unassignedStudents;
+                  return DropdownButtonFormField<String?>(
+                    initialValue: _student,
+                    decoration: const InputDecoration(
+                      labelText: 'Student (from the name on the paper)',
+                      border: OutlineInputBorder(),
                     ),
+                    items: [
+                      const DropdownMenuItem<String?>(
+                        value: null,
+                        child: Text('— no student —'),
+                      ),
+                      // An assignment recorded under an older roster stays
+                      // selectable; otherwise initialValue would not be
+                      // among the items (a debug assertion failure).
+                      if (_student != null && !available.contains(_student))
+                        DropdownMenuItem<String?>(
+                          value: _student,
+                          child: Text(_student!),
+                        ),
+                      for (final name in available)
+                        DropdownMenuItem<String?>(
+                          value: name,
+                          child: Text(name),
+                        ),
+                    ],
+                    onChanged: (value) => setState(() => _student = value),
+                  );
+                },
+              ),
+              const SizedBox(height: 12),
+            ],
+            Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton.icon(
+                    icon: const Icon(Icons.camera_alt),
+                    label: const Text('Retake sheet'),
+                    onPressed: () => _finish(session.retakeSheet, 'retake'),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: needsReview
+                      ? FilledButton.icon(
+                          icon: const Icon(Icons.qr_code_scanner),
+                          // Explicit: skipping records nothing — neither a
+                          // grade nor the picked student.
+                          label: const Text('Skip — no grade'),
+                          onPressed: () => _finish(session.nextSheet, 'next'),
+                        )
+                      : FilledButton.icon(
+                          icon: const Icon(Icons.check),
+                          label: const Text('Confirm — next sheet'),
+                          onPressed: () => _finish(() {
+                            session.confirmResult(studentName: _student);
+                            session.nextSheet();
+                          }, 'next'),
+                        ),
+                ),
+              ],
             ),
           ],
         ),

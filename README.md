@@ -196,13 +196,18 @@ later if you need a key for grading.
 
 In the Flutter app:
 
-1. **Load** `answer-key.json` once for the exam.
+1. **Load** `answer-key.json` once for the exam. Optionally load a **student
+   roster** — a plain text file with one student name per line — to assign
+   names to graded sheets.
 2. For each student sheet: **scan the QR** (recovers the seed and per-section
    selected counts), then **scan the bubble sheet**.
 3. The app replays the selection + scramble from the seed, maps the detected
    marks back to the original questions, and shows the **score** plus a
-   per-question breakdown. Low-confidence bubbles and unreadable QRs are flagged
-   for manual review rather than guessed.
+   per-question breakdown next to a generated reference sheet. Low-confidence
+   bubbles and unreadable QRs are flagged for manual review (with a hand-entry
+   fallback) rather than guessed.
+4. Confirmed grades are recorded per variant — optionally with the student
+   picked from the roster — and exported as a CSV report.
 
 ---
 

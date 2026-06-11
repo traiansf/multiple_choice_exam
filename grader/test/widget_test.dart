@@ -210,7 +210,7 @@ void main() {
     // grader can grade by hand.
     expect(find.byType(Image), findsOneWidget);
     expect(find.text('Correct answers'), findsNothing);
-    expect(find.text('Next sheet'), findsOneWidget);
+    expect(find.text('Skip — no grade'), findsOneWidget);
     expect(find.text('Confirm — next sheet'), findsNothing);
   });
 
@@ -326,9 +326,9 @@ void main() {
         4: [3],
       }),
     );
-    session.submitManualGrade(3);
+    session.submitManualGrade(3, studentName: 'Ada Lovelace');
     await tester.pumpWidget(MaterialApp(home: RecordsScreen(session: session)));
-    expect(find.text('graded manually'), findsOneWidget);
+    expect(find.text('Ada Lovelace — graded manually'), findsOneWidget);
     expect(find.byIcon(Icons.edit), findsOneWidget);
   });
 
@@ -381,6 +381,162 @@ void main() {
     await tester.tap(find.text('Cancel')); // never reaches the file picker
     await tester.pumpAndSettle();
     expect(session.gradeBook.length, 1);
+  });
+
+  testWidgets('student picker assigns a roster name on confirm', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(900, 1600);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+    final session = GraderSession()
+      ..loadRoster('Ada Lovelace\nGrace Hopper')
+      ..loadKey(keyJson)
+      ..setQr(qrRaw);
+    session.processSheet(
+      sheetWith({
+        for (var row = 0; row < 5; row++) row: [correctPositions[row]],
+      }),
+    );
+    await tester.pumpWidget(MaterialApp(home: ResultScreen(session: session)));
+    expect(find.text('— no student —'), findsOneWidget);
+    await tester.tap(find.byType(DropdownButtonFormField<String?>));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Ada Lovelace').last);
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Confirm — next sheet'));
+    expect(session.gradeBook.records.single.studentName, 'Ada Lovelace');
+  });
+
+  testWidgets('review path records the picked student with the manual grade', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(900, 1600);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+    final session = GraderSession()
+      ..loadRoster('Ada Lovelace\nGrace Hopper')
+      ..loadKey(keyJson)
+      ..setQr(qrRaw);
+    session.processSheet(
+      sheetWith({
+        0: [3],
+        1: [1, 2],
+        2: [0],
+        3: [2],
+        4: [3],
+      }),
+    );
+    await tester.pumpWidget(MaterialApp(home: ResultScreen(session: session)));
+    await tester.tap(find.byType(DropdownButtonFormField<String?>));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Grace Hopper').last);
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byType(TextField), '4');
+    await tester.tap(find.text('Submit manual grade'));
+    await tester.pump();
+    final record = session.gradeBook.records.single;
+    expect(record.studentName, 'Grace Hopper');
+    expect(record.manual, isTrue);
+    expect(record.score, 4);
+  });
+
+  testWidgets('re-grading a variant preselects its assigned student', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(900, 1600);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+    final session = GraderSession()
+      ..loadRoster('Ada Lovelace\nGrace Hopper')
+      ..loadKey(keyJson)
+      ..setQr(qrRaw);
+    session.processSheet(
+      sheetWith({
+        for (var row = 0; row < 5; row++) row: [correctPositions[row]],
+      }),
+    );
+    session.confirmResult(studentName: 'Ada Lovelace');
+    session.nextSheet();
+    session.setQr(qrRaw); // same variant again
+    session.processSheet(
+      sheetWith({
+        for (var row = 0; row < 5; row++) row: [correctPositions[row]],
+      }),
+    );
+    await tester.pumpWidget(MaterialApp(home: ResultScreen(session: session)));
+    // Preselected without any interaction.
+    expect(find.text('Ada Lovelace'), findsOneWidget);
+  });
+
+  testWidgets(
+    'assignment from a replaced roster stays selectable without crashing',
+    (tester) async {
+      tester.view.physicalSize = const Size(900, 1600);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.reset);
+      final session = GraderSession()
+        ..loadRoster('Ada Lovelace\nGrace Hopper')
+        ..loadKey(keyJson)
+        ..setQr(qrRaw);
+      session.processSheet(
+        sheetWith({
+          for (var row = 0; row < 5; row++) row: [correctPositions[row]],
+        }),
+      );
+      session.confirmResult(studentName: 'Ada Lovelace');
+      session.nextSheet();
+      session.loadRoster('Bob\nCarol'); // Ada no longer on the roster
+      session.setQr(qrRaw);
+      session.processSheet(
+        sheetWith({
+          for (var row = 0; row < 5; row++) row: [correctPositions[row]],
+        }),
+      );
+      await tester.pumpWidget(
+        MaterialApp(home: ResultScreen(session: session)),
+      );
+      // Would previously hit the DropdownButtonFormField initialValue
+      // assertion; now the old assignment is kept as an item.
+      expect(tester.takeException(), isNull);
+      expect(find.text('Ada Lovelace'), findsOneWidget);
+    },
+  );
+
+  testWidgets('no roster means no student picker', (tester) async {
+    final session = GraderSession()
+      ..loadKey(keyJson)
+      ..setQr(qrRaw);
+    session.processSheet(
+      sheetWith({
+        for (var row = 0; row < 5; row++) row: [correctPositions[row]],
+      }),
+    );
+    await tester.pumpWidget(MaterialApp(home: ResultScreen(session: session)));
+    expect(find.byType(DropdownButtonFormField<String?>), findsNothing);
+  });
+
+  testWidgets('records screen shows the assigned student', (tester) async {
+    final session = GraderSession()
+      ..loadRoster('Ada Lovelace')
+      ..loadKey(keyJson)
+      ..setQr(qrRaw);
+    session.processSheet(
+      sheetWith({
+        for (var row = 0; row < 5; row++) row: [correctPositions[row]],
+      }),
+    );
+    session.confirmResult(studentName: 'Ada Lovelace');
+    await tester.pumpWidget(MaterialApp(home: RecordsScreen(session: session)));
+    expect(find.text('Ada Lovelace'), findsOneWidget);
+  });
+
+  testWidgets('home shows the roster count after loading', (tester) async {
+    final session = GraderSession()
+      ..loadRoster('Ada\nGrace\nLin')
+      ..loadKey(keyJson);
+    await tester.pumpWidget(GraderApp(session: session));
+    expect(find.text('Roster: 3 students'), findsOneWidget);
   });
 
   testWidgets('double-tapping Confirm during the pop animation is harmless', (

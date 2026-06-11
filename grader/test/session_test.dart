@@ -452,6 +452,136 @@ void main() {
     });
   });
 
+  group('student roster (issue #8)', () {
+    test('loadRoster parses, trims, dedupes, and rejects empty input', () {
+      final session = GraderSession();
+      expect(
+        session.loadRoster('Ada Lovelace\n  Grace Hopper  \n\nAda Lovelace\n'),
+        isTrue,
+      );
+      expect(session.roster, ['Ada Lovelace', 'Grace Hopper']);
+      expect(session.loadRoster('   \n\n'), isFalse);
+      expect(session.lastError, contains('no names'));
+      expect(session.roster, ['Ada Lovelace', 'Grace Hopper']); // kept
+    });
+
+    test('loadRoster handles CRLF line endings', () {
+      final session = GraderSession();
+      expect(session.loadRoster('Ada\r\nGrace\r\nLin\r\n'), isTrue);
+      expect(session.roster, ['Ada', 'Grace', 'Lin']);
+    });
+
+    test('unassignedStudents without a current QR excludes all assigned', () {
+      final session = GraderSession()
+        ..loadRoster('Ada\nGrace')
+        ..loadKey(keyJson)
+        ..setQr(qrRaw);
+      session.processSheet(correctSheet());
+      session.confirmResult(studentName: 'Ada');
+      session.nextSheet(); // payload now null
+      expect(session.unassignedStudents, ['Grace']);
+    });
+
+    test('replacing the roster keeps old assignments out of the way', () {
+      final session = GraderSession()
+        ..loadRoster('Ada\nGrace')
+        ..loadKey(keyJson)
+        ..setQr(qrRaw);
+      session.processSheet(correctSheet());
+      session.confirmResult(studentName: 'Ada');
+      session.nextSheet();
+      session.loadRoster('Bob\nCarol');
+      session.setQr('v1|2|0|2|2|1|fp012345');
+      // Ada is not in the new roster; Bob/Carol are not suppressed by her.
+      expect(session.unassignedStudents, ['Bob', 'Carol']);
+      // The recorded grade still carries her name for the report.
+      expect(session.gradeBook.recordFor(1)!.studentName, 'Ada');
+    });
+
+    test('roster survives loading a new key; grades do not', () {
+      final session = GraderSession()
+        ..loadRoster('Ada\nGrace')
+        ..loadKey(keyJson)
+        ..setQr(qrRaw);
+      session.processSheet(correctSheet());
+      session.confirmResult(studentName: 'Ada');
+      session.loadKey(keyJson);
+      expect(session.gradeBook.isEmpty, isTrue);
+      expect(session.roster, ['Ada', 'Grace']);
+    });
+
+    test('confirmResult records the assigned student', () {
+      final session = GraderSession()
+        ..loadRoster('Ada\nGrace')
+        ..loadKey(keyJson)
+        ..setQr(qrRaw);
+      session.processSheet(correctSheet());
+      session.confirmResult(studentName: 'Ada');
+      expect(session.gradeBook.records.single.studentName, 'Ada');
+    });
+
+    test('submitManualGrade records the assigned student', () {
+      final session = GraderSession()
+        ..loadRoster('Ada\nGrace')
+        ..loadKey(keyJson)
+        ..setQr(qrRaw);
+      session.processSheet(
+        buildSheetImage(
+          rows: 5,
+          optionsPerQuestion: 4,
+          filledByRow: {
+            0: [3],
+            1: [1, 2],
+            2: [0],
+            3: [2],
+            4: [3],
+          },
+        ),
+      );
+      session.submitManualGrade(3, studentName: 'Grace');
+      final record = session.gradeBook.records.single;
+      expect(record.studentName, 'Grace');
+      expect(record.manual, isTrue);
+    });
+
+    test(
+      'unassignedStudents excludes other variants but keeps the current',
+      () {
+        final session = GraderSession()
+          ..loadRoster('Ada\nGrace\nLin')
+          ..loadKey(keyJson)
+          ..setQr(qrRaw);
+        session.processSheet(correctSheet());
+        session.confirmResult(studentName: 'Ada');
+        session.nextSheet();
+
+        // A different variant: Ada is taken.
+        session.setQr('v1|2|0|2|2|1|fp012345');
+        expect(session.unassignedStudents, ['Grace', 'Lin']);
+
+        // Back to variant 1: its own assignment stays selectable.
+        session.nextSheet();
+        session.setQr(qrRaw);
+        expect(session.unassignedStudents, ['Ada', 'Grace', 'Lin']);
+      },
+    );
+
+    test('re-grading a variant with a different student replaces it', () {
+      final session = GraderSession()
+        ..loadRoster('Ada\nGrace')
+        ..loadKey(keyJson)
+        ..setQr(qrRaw);
+      session.processSheet(correctSheet());
+      session.confirmResult(studentName: 'Ada');
+      session.nextSheet();
+      session.setQr(qrRaw);
+      session.processSheet(correctSheet());
+      session.confirmResult(studentName: 'Grace');
+      expect(session.gradeBook.length, 1);
+      expect(session.gradeBook.records.single.studentName, 'Grace');
+    });
+  });
+
   test('notifies listeners on every transition', () {
     final session = GraderSession();
     var notifications = 0;
