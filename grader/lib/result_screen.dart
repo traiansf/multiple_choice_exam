@@ -42,7 +42,14 @@ class _ResultScreenState extends State<ResultScreen> {
     return Scaffold(
       appBar: AppBar(title: const Text('Result')),
       body: needsReview
-          ? _ReviewNotice(rows: omr!.reviewRows)
+          ? _ReviewNotice(
+              rows: omr!.reviewRows,
+              total: omr.rows.length,
+              onSubmit: (score) => _finish(() {
+                session.submitManualGrade(score);
+                session.nextSheet();
+              }, 'next'),
+            )
           : _GradeView(session: session),
       bottomNavigationBar: Padding(
         padding: const EdgeInsets.all(16),
@@ -79,10 +86,39 @@ class _ResultScreenState extends State<ResultScreen> {
   }
 }
 
-class _ReviewNotice extends StatelessWidget {
-  const _ReviewNotice({required this.rows});
+class _ReviewNotice extends StatefulWidget {
+  const _ReviewNotice({
+    required this.rows,
+    required this.total,
+    required this.onSubmit,
+  });
 
   final List<int> rows;
+  final int total;
+  final void Function(int score) onSubmit;
+
+  @override
+  State<_ReviewNotice> createState() => _ReviewNoticeState();
+}
+
+class _ReviewNoticeState extends State<_ReviewNotice> {
+  final TextEditingController _score = TextEditingController();
+  String? _error;
+
+  @override
+  void dispose() {
+    _score.dispose();
+    super.dispose();
+  }
+
+  void _submit() {
+    final score = int.tryParse(_score.text.trim());
+    if (score == null || score < 0 || score > widget.total) {
+      setState(() => _error = 'Enter a score between 0 and ${widget.total}.');
+      return;
+    }
+    widget.onSubmit(score);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -103,9 +139,33 @@ class _ReviewNotice extends StatelessWidget {
           ),
           const SizedBox(height: 16),
           Text(
-            'Question row${rows.length == 1 ? '' : 's'} ${rows.join(', ')}'
-            ' could not be read confidently (multiple or faint marks).'
-            ' Retake the photo, or grade this sheet by hand.',
+            'Question row${widget.rows.length == 1 ? '' : 's'}'
+            ' ${widget.rows.join(', ')} could not be read confidently'
+            ' (multiple or faint marks). Retake the photo, or inspect the'
+            ' sheet and grade it by hand below.',
+          ),
+          const SizedBox(height: 24),
+          Row(
+            children: [
+              SizedBox(
+                width: 120,
+                child: TextField(
+                  controller: _score,
+                  keyboardType: TextInputType.number,
+                  decoration: InputDecoration(
+                    labelText: 'Score / ${widget.total}',
+                    border: const OutlineInputBorder(),
+                    errorText: _error,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 12),
+              FilledButton.icon(
+                icon: const Icon(Icons.edit),
+                label: const Text('Submit manual grade'),
+                onPressed: _submit,
+              ),
+            ],
           ),
         ],
       ),

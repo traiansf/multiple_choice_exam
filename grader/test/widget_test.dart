@@ -210,6 +210,56 @@ void main() {
     expect(find.text('Confirm — next sheet'), findsNothing);
   });
 
+  testWidgets('review screen accepts a manual grade and records it', (
+    tester,
+  ) async {
+    final session = GraderSession()
+      ..loadKey(keyJson)
+      ..setQr(qrRaw);
+    session.processSheet(
+      sheetWith({
+        0: [3],
+        1: [1, 2],
+        2: [0],
+        3: [2],
+        4: [3],
+      }),
+    );
+    await tester.pumpWidget(MaterialApp(home: ResultScreen(session: session)));
+    expect(find.text('Submit manual grade'), findsOneWidget);
+    await tester.enterText(find.byType(TextField), '3');
+    await tester.tap(find.text('Submit manual grade'));
+    await tester.pump();
+    final record = session.gradeBook.records.single;
+    expect(record.score, 3);
+    expect(record.manual, isTrue);
+    expect(session.stage, SessionStage.needQr);
+  });
+
+  testWidgets('review screen rejects an out-of-range manual grade', (
+    tester,
+  ) async {
+    final session = GraderSession()
+      ..loadKey(keyJson)
+      ..setQr(qrRaw);
+    session.processSheet(
+      sheetWith({
+        0: [3],
+        1: [1, 2],
+        2: [0],
+        3: [2],
+        4: [3],
+      }),
+    );
+    await tester.pumpWidget(MaterialApp(home: ResultScreen(session: session)));
+    await tester.enterText(find.byType(TextField), '9');
+    await tester.tap(find.text('Submit manual grade'));
+    await tester.pump();
+    expect(find.text('Enter a score between 0 and 5.'), findsOneWidget);
+    expect(session.gradeBook.isEmpty, isTrue);
+    expect(session.stage, SessionStage.result);
+  });
+
   testWidgets('home shows the recorded count and gates the records button', (
     tester,
   ) async {

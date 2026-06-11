@@ -33,16 +33,27 @@ void main() {
   test('toCsv produces the exact report format', () {
     final book = GradeBook()
       ..record(GradeRecord(variantId: 12, score: 4, total: 5, recordedAt: t2))
-      ..record(GradeRecord(variantId: 1, score: 5, total: 5, recordedAt: t1));
+      ..record(
+        GradeRecord(
+          variantId: 1,
+          score: 5,
+          total: 5,
+          recordedAt: t1,
+          manual: true,
+        ),
+      );
     expect(
       book.toCsv(),
-      'variant_id,score,total,percent,recorded_at\n'
-      '1,5,5,100.0,2026-06-11T10:00:00.000Z\n'
-      '12,4,5,80.0,2026-06-11T10:05:00.000Z\n',
+      'variant_id,score,total,percent,manual,recorded_at\n'
+      '1,5,5,100.0,true,2026-06-11T10:00:00.000Z\n'
+      '12,4,5,80.0,false,2026-06-11T10:05:00.000Z\n',
     );
   });
 
   test('empty book CSV is the header only', () {
-    expect(GradeBook().toCsv(), 'variant_id,score,total,percent,recorded_at\n');
+    expect(
+      GradeBook().toCsv(),
+      'variant_id,score,total,percent,manual,recorded_at\n',
+    );
   });
 }

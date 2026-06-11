@@ -252,6 +252,34 @@ class GraderSession extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Records a hand-entered score for a review-flagged sheet: the grader
+  /// inspected the paper on the review screen and graded it manually. Only
+  /// valid while the current sheet needs review — cleanly graded sheets go
+  /// through [confirmResult].
+  void submitManualGrade(int score) {
+    final payload = _payload;
+    if (payload == null || !(_omr?.needsReview ?? false)) {
+      throw StateError(
+        'submitManualGrade is only valid for a review-flagged sheet',
+      );
+    }
+    final total = payload.counts.values.fold(0, (sum, count) => sum + count);
+    if (score < 0 || score > total) {
+      throw ArgumentError.value(score, 'score', 'must be between 0 and $total');
+    }
+    _confirmed = true;
+    gradeBook.record(
+      GradeRecord(
+        variantId: payload.variantId,
+        score: score,
+        total: total,
+        recordedAt: DateTime.now(),
+        manual: true,
+      ),
+    );
+    notifyListeners();
+  }
+
   /// Clears the sheet result to recapture the same student's sheet.
   void retakeSheet() {
     _omr = null;

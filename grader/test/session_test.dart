@@ -343,6 +343,69 @@ void main() {
       expect(session.gradeBook.length, 1);
     });
 
+    img.Image reviewSheet() => buildSheetImage(
+      rows: 5,
+      optionsPerQuestion: 4,
+      filledByRow: {
+        0: [3],
+        1: [1, 2], // double mark -> needsReview
+        2: [0],
+        3: [2],
+        4: [3],
+      },
+    );
+
+    test('manual grade for a review-flagged sheet is recorded as manual', () {
+      final session = GraderSession()
+        ..loadKey(keyJson)
+        ..setQr(qrRaw);
+      session.processSheet(reviewSheet());
+      expect(session.omrResult!.needsReview, isTrue);
+      session.submitManualGrade(3);
+      expect(session.confirmed, isTrue);
+      final record = session.gradeBook.records.single;
+      expect(record.variantId, 1);
+      expect(record.score, 3);
+      expect(record.total, 5);
+      expect(record.manual, isTrue);
+    });
+
+    test('manual grade replaces an earlier automatic grade', () {
+      final session = GraderSession()
+        ..loadKey(keyJson)
+        ..setQr(qrRaw);
+      session.processSheet(correctSheet());
+      session.confirmResult();
+      session.nextSheet();
+      session.setQr(qrRaw);
+      session.processSheet(reviewSheet());
+      session.submitManualGrade(2);
+      expect(session.gradeBook.length, 1);
+      expect(session.gradeBook.records.single.score, 2);
+      expect(session.gradeBook.records.single.manual, isTrue);
+    });
+
+    test('manual grade outside 0..total is rejected', () {
+      final session = GraderSession()
+        ..loadKey(keyJson)
+        ..setQr(qrRaw);
+      session.processSheet(reviewSheet());
+      expect(() => session.submitManualGrade(6), throwsArgumentError);
+      expect(() => session.submitManualGrade(-1), throwsArgumentError);
+      expect(session.gradeBook.isEmpty, isTrue);
+    });
+
+    test('manual grade without a review-flagged sheet throws', () {
+      final session = GraderSession()
+        ..loadKey(keyJson)
+        ..setQr(qrRaw);
+      // No sheet processed at all:
+      expect(() => session.submitManualGrade(3), throwsStateError);
+      // Cleanly graded sheet must go through confirmResult instead:
+      session.processSheet(correctSheet());
+      expect(() => session.submitManualGrade(3), throwsStateError);
+    });
+
     test('loading a new key clears the records', () {
       final session = GraderSession()
         ..loadKey(keyJson)
