@@ -17,12 +17,15 @@ void main() {
     );
   });
 
-  test('hand-derived shuffle vector for seed 0 (see generator test_rng.py)', () {
-    // shuffle([0,1,2]) seed 0: i=2 -> j=1 -> [0,2,1]; i=1 -> j=0 -> [2,0,1].
-    final items = [0, 1, 2];
-    SplitMix64(BigInt.zero).shuffle(items);
-    expect(items, [2, 0, 1]);
-  });
+  test(
+    'hand-derived shuffle vector for seed 0 (see generator test_rng.py)',
+    () {
+      // shuffle([0,1,2]) seed 0: i=2 -> j=1 -> [0,2,1]; i=1 -> j=0 -> [2,0,1].
+      final items = [0, 1, 2];
+      SplitMix64(BigInt.zero).shuffle(items);
+      expect(items, [2, 0, 1]);
+    },
+  );
 
   test('nextBelow covers range and bound 1 is zero', () {
     final rng = SplitMix64(BigInt.from(7));

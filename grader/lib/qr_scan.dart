@@ -1,6 +1,6 @@
 /// QR payload codec. Format is produced by generator/src/mcexam/qr.py and
 /// documented in README 'QR payload' — bump the version on ANY field change:
-///     v1|<variant_id>|<seed>|<n_easy>|<n_medium>|<n_hard>|<source_fp>
+/// `v1|<variant_id>|<seed>|<n_easy>|<n_medium>|<n_hard>|<source_fp>`.
 /// Camera scanning (mobile_scanner) wires into this in a later milestone.
 library;
 
@@ -33,8 +33,11 @@ class QrPayload {
   final int nHard;
   final String sourceFingerprint;
 
-  Map<String, int> get counts =>
-      {'easy': nEasy, 'medium': nMedium, 'hard': nHard};
+  Map<String, int> get counts => {
+    'easy': nEasy,
+    'medium': nMedium,
+    'hard': nHard,
+  };
 
   static QrPayload decode(String text) {
     final parts = text.split('|');

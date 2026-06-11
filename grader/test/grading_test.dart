@@ -20,16 +20,16 @@ void main() {
   final payload = QrPayload.decode('v1|1|424242|2|2|1|ab12cd34');
 
   VariantPlan planFor(QrPayload p) => buildVariant(
-        seed: p.seed,
-        sectionSizes: key.sections,
-        counts: p.counts,
-        optionsPerQuestion: key.optionsPerQuestion,
-      );
+    seed: p.seed,
+    sectionSizes: key.sections,
+    counts: p.counts,
+    optionsPerQuestion: key.optionsPerQuestion,
+  );
 
   List<int> correctMarks(VariantPlan plan) => [
-        for (final q in plan.sheet)
-          q.optionPerm.indexOf(key.answerKey[q.globalIndex]),
-      ];
+    for (final q in plan.sheet)
+      q.optionPerm.indexOf(key.answerKey[q.globalIndex]),
+  ];
 
   test('round trip: all-correct marks score full', () {
     final result = grade(
@@ -69,8 +69,11 @@ void main() {
     expect(
       () => grade(key: key, payload: other, marks: List<int?>.filled(5, 0)),
       throwsA(
-        isA<GradingException>()
-            .having((e) => e.message, 'message', contains('fingerprint')),
+        isA<GradingException>().having(
+          (e) => e.message,
+          'message',
+          contains('fingerprint'),
+        ),
       ),
     );
   });
@@ -79,8 +82,11 @@ void main() {
     expect(
       () => grade(key: key, payload: payload, marks: [0, 1]),
       throwsA(
-        isA<GradingException>()
-            .having((e) => e.message, 'message', contains('marks')),
+        isA<GradingException>().having(
+          (e) => e.message,
+          'message',
+          contains('marks'),
+        ),
       ),
     );
   });
@@ -97,8 +103,11 @@ void main() {
     expect(
       () => grade(key: key, payload: payload, marks: [0, 1, 2, 3, 4]),
       throwsA(
-        isA<GradingException>()
-            .having((e) => e.message, 'message', contains('position')),
+        isA<GradingException>().having(
+          (e) => e.message,
+          'message',
+          contains('position'),
+        ),
       ),
     );
   });

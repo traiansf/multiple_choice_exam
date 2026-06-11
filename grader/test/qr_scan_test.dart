@@ -14,8 +14,11 @@ void main() {
     expect(
       () => QrPayload.decode(text),
       throwsA(
-        isA<QrPayloadException>()
-            .having((e) => e.message, 'message', contains(message)),
+        isA<QrPayloadException>().having(
+          (e) => e.message,
+          'message',
+          contains(message),
+        ),
       ),
     );
   }

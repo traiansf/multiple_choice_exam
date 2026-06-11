@@ -27,8 +27,11 @@ void main() {
     expect(
       () => AnswerKey.parse(json),
       throwsA(
-        isA<KeyfileFormatException>()
-            .having((e) => e.message, 'message', contains(message)),
+        isA<KeyfileFormatException>().having(
+          (e) => e.message,
+          'message',
+          contains(message),
+        ),
       ),
     );
   }
@@ -69,6 +72,9 @@ void main() {
   });
 
   test('rejects missing section key', () {
-    expectRejects(validJson.replaceFirst('"hard": 2', '"brutal": 2'), 'sections');
+    expectRejects(
+      validJson.replaceFirst('"hard": 2', '"brutal": 2'),
+      'sections',
+    );
   });
 }

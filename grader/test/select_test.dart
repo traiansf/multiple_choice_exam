@@ -15,15 +15,16 @@ void main() {
       final c = raw as Map<String, dynamic>;
       final plan = buildVariant(
         seed: BigInt.parse(c['seed'] as String),
-        sectionSizes:
-            (c['sections'] as Map<String, dynamic>).cast<String, int>(),
+        sectionSizes: (c['sections'] as Map<String, dynamic>)
+            .cast<String, int>(),
         counts: (c['counts'] as Map<String, dynamic>).cast<String, int>(),
         optionsPerQuestion: c['options_per_question'] as int,
       );
       final expected = c['expected'] as Map<String, dynamic>;
-      final expectedSelections = (expected['selections']
-              as Map<String, dynamic>)
-          .map((k, v) => MapEntry(k, (v as List<dynamic>).cast<int>()));
+      final expectedSelections =
+          (expected['selections'] as Map<String, dynamic>).map(
+            (k, v) => MapEntry(k, (v as List<dynamic>).cast<int>()),
+          );
       expect(plan.selections, expectedSelections, reason: 'seed ${c['seed']}');
       expect(
         [for (final q in plan.sheet) q.optionPerm],

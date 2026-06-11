@@ -95,8 +95,9 @@ GradeResult grade({
         'mark position $mark on row ${row + 1} is outside the option range',
       );
     }
-    final correctPosition =
-        question.optionPerm.indexOf(key.answerKey[question.globalIndex]);
+    final correctPosition = question.optionPerm.indexOf(
+      key.answerKey[question.globalIndex],
+    );
     final correct = mark != null && mark == correctPosition;
     if (correct) score++;
     perQuestion.add(
