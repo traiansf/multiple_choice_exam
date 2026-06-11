@@ -72,21 +72,37 @@ class _ResultScreenState extends State<ResultScreen> {
           mainAxisSize: MainAxisSize.min,
           children: [
             if (session.roster.isNotEmpty) ...[
-              DropdownButtonFormField<String?>(
-                initialValue: _student,
-                decoration: const InputDecoration(
-                  labelText: 'Student (from the name on the paper)',
-                  border: OutlineInputBorder(),
-                ),
-                items: [
-                  const DropdownMenuItem<String?>(
-                    value: null,
-                    child: Text('— no student —'),
-                  ),
-                  for (final name in session.unassignedStudents)
-                    DropdownMenuItem<String?>(value: name, child: Text(name)),
-                ],
-                onChanged: (value) => setState(() => _student = value),
+              Builder(
+                builder: (context) {
+                  final available = session.unassignedStudents;
+                  return DropdownButtonFormField<String?>(
+                    initialValue: _student,
+                    decoration: const InputDecoration(
+                      labelText: 'Student (from the name on the paper)',
+                      border: OutlineInputBorder(),
+                    ),
+                    items: [
+                      const DropdownMenuItem<String?>(
+                        value: null,
+                        child: Text('— no student —'),
+                      ),
+                      // An assignment recorded under an older roster stays
+                      // selectable; otherwise initialValue would not be
+                      // among the items (a debug assertion failure).
+                      if (_student != null && !available.contains(_student))
+                        DropdownMenuItem<String?>(
+                          value: _student,
+                          child: Text(_student!),
+                        ),
+                      for (final name in available)
+                        DropdownMenuItem<String?>(
+                          value: name,
+                          child: Text(name),
+                        ),
+                    ],
+                    onChanged: (value) => setState(() => _student = value),
+                  );
+                },
               ),
               const SizedBox(height: 12),
             ],
@@ -104,7 +120,9 @@ class _ResultScreenState extends State<ResultScreen> {
                   child: needsReview
                       ? FilledButton.icon(
                           icon: const Icon(Icons.qr_code_scanner),
-                          label: const Text('Next sheet'),
+                          // Explicit: skipping records nothing — neither a
+                          // grade nor the picked student.
+                          label: const Text('Skip — no grade'),
                           onPressed: () => _finish(session.nextSheet, 'next'),
                         )
                       : FilledButton.icon(

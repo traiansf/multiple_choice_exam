@@ -170,14 +170,17 @@ class HomeScreen extends StatelessWidget {
                   onPressed: () => _loadKey(context),
                 ),
                 const SizedBox(height: 8),
-                OutlinedButton.icon(
-                  icon: const Icon(Icons.people),
-                  label: Text(
-                    session.roster.isEmpty
-                        ? 'Load student roster (optional)'
-                        : 'Roster: ${session.roster.length} students',
+                Tooltip(
+                  message: 'Plain text file: one student name per line.',
+                  child: OutlinedButton.icon(
+                    icon: const Icon(Icons.people),
+                    label: Text(
+                      session.roster.isEmpty
+                          ? 'Load student roster (optional)'
+                          : 'Roster: ${session.roster.length} students',
+                    ),
+                    onPressed: () => _loadRoster(context),
                   ),
-                  onPressed: () => _loadRoster(context),
                 ),
                 const SizedBox(height: 8),
                 FilledButton.icon(

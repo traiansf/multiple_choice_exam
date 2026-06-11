@@ -465,6 +465,39 @@ void main() {
       expect(session.roster, ['Ada Lovelace', 'Grace Hopper']); // kept
     });
 
+    test('loadRoster handles CRLF line endings', () {
+      final session = GraderSession();
+      expect(session.loadRoster('Ada\r\nGrace\r\nLin\r\n'), isTrue);
+      expect(session.roster, ['Ada', 'Grace', 'Lin']);
+    });
+
+    test('unassignedStudents without a current QR excludes all assigned', () {
+      final session = GraderSession()
+        ..loadRoster('Ada\nGrace')
+        ..loadKey(keyJson)
+        ..setQr(qrRaw);
+      session.processSheet(correctSheet());
+      session.confirmResult(studentName: 'Ada');
+      session.nextSheet(); // payload now null
+      expect(session.unassignedStudents, ['Grace']);
+    });
+
+    test('replacing the roster keeps old assignments out of the way', () {
+      final session = GraderSession()
+        ..loadRoster('Ada\nGrace')
+        ..loadKey(keyJson)
+        ..setQr(qrRaw);
+      session.processSheet(correctSheet());
+      session.confirmResult(studentName: 'Ada');
+      session.nextSheet();
+      session.loadRoster('Bob\nCarol');
+      session.setQr('v1|2|0|2|2|1|fp012345');
+      // Ada is not in the new roster; Bob/Carol are not suppressed by her.
+      expect(session.unassignedStudents, ['Bob', 'Carol']);
+      // The recorded grade still carries her name for the report.
+      expect(session.gradeBook.recordFor(1)!.studentName, 'Ada');
+    });
+
     test('roster survives loading a new key; grades do not', () {
       final session = GraderSession()
         ..loadRoster('Ada\nGrace')

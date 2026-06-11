@@ -66,10 +66,13 @@ class GradeBook {
     return buffer.toString();
   }
 
-  /// RFC 4180: quote when the field contains a comma, quote, or newline;
-  /// double the internal quotes.
+  /// RFC 4180: quote when the field contains a comma, quote, or any line
+  /// break (including a bare CR); double the internal quotes.
   static String _csvField(String value) {
-    if (!value.contains(',') && !value.contains('"') && !value.contains('\n')) {
+    if (!value.contains(',') &&
+        !value.contains('"') &&
+        !value.contains('\n') &&
+        !value.contains('\r')) {
       return value;
     }
     return '"${value.replaceAll('"', '""')}"';
