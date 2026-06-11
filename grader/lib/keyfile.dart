@@ -49,6 +49,9 @@ class AnswerKey {
       throw KeyfileFormatException('expected a JSON object at the top level');
     }
     final version = decoded['version'];
+    if (version == null) {
+      throw KeyfileFormatException("missing required field 'version'");
+    }
     if (version != supportedVersion) {
       throw KeyfileFormatException(
         'unsupported key file version $version (this build reads'

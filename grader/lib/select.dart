@@ -61,7 +61,7 @@ VariantPlan buildVariant({
     // All selections first ...
     final indices = List<int>.generate(sectionSizes[key]!, (i) => i);
     rng.shuffle(indices);
-    selections[key] = indices.sublist(0, counts[key]!);
+    selections[key] = List.unmodifiable(indices.sublist(0, counts[key]!));
   }
 
   final offsets = <String, int>{};
@@ -82,7 +82,7 @@ VariantPlan buildVariant({
           section: key,
           indexInSection: index,
           globalIndex: offsets[key]! + index,
-          optionPerm: perm,
+          optionPerm: List.unmodifiable(perm),
         ),
       );
     }

@@ -58,12 +58,15 @@ class QrPayload {
         "seed '${parts[2]}' is not an unsigned 64-bit integer",
       );
     }
+    if (parts[6].isEmpty) {
+      throw QrPayloadException('source fingerprint field is empty');
+    }
     return QrPayload(
       variantId: _count(parts[1], 'variant id'),
       seed: seed,
-      nEasy: _count(parts[3], 'count'),
-      nMedium: _count(parts[4], 'count'),
-      nHard: _count(parts[5], 'count'),
+      nEasy: _count(parts[3], 'n_easy count'),
+      nMedium: _count(parts[4], 'n_medium count'),
+      nHard: _count(parts[5], 'n_hard count'),
       sourceFingerprint: parts[6],
     );
   }

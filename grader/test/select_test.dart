@@ -55,6 +55,22 @@ void main() {
     }
   });
 
+  test('selection indices are distinct within each section', () {
+    final plan = buildVariant(
+      seed: BigInt.from(11),
+      sectionSizes: {'easy': 8, 'medium': 6, 'hard': 4},
+      counts: {'easy': 3, 'medium': 2, 'hard': 1},
+      optionsPerQuestion: 4,
+    );
+    for (final entry in plan.selections.entries) {
+      expect(
+        entry.value.toSet().length,
+        entry.value.length,
+        reason: '${entry.key} selection has duplicates',
+      );
+    }
+  });
+
   test('count exceeding section size throws', () {
     expect(
       () => buildVariant(

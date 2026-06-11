@@ -37,6 +37,10 @@ void main() {
     expectRejects('v1|3|5|-1|8|2|ab12cd34', 'count');
   });
 
+  test('rejects empty fingerprint field', () {
+    expectRejects('v1|1|42|1|1|1|', 'fingerprint');
+  });
+
   test('rejects seed exceeding 64 bits', () {
     expectRejects('v1|3|18446744073709551616|10|8|2|ab12cd34', 'seed');
   });

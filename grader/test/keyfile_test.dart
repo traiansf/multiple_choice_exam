@@ -36,6 +36,23 @@ void main() {
     );
   }
 
+  test('rejects missing version with a specific message', () {
+    expectRejects(
+      validJson.replaceFirst('"version": 1,', ''),
+      "missing required field 'version'",
+    );
+  });
+
+  test('rejects JSON doubles where integers are required', () {
+    expectRejects(
+      validJson.replaceFirst(
+        '"options_per_question": 4',
+        '"options_per_question": 4.0',
+      ),
+      'options_per_question',
+    );
+  });
+
   test('rejects unsupported version', () {
     expectRejects(
       validJson.replaceFirst('"version": 1', '"version": 2'),
