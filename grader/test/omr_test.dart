@@ -64,8 +64,8 @@ img.Image buildSheetImage({
 
 void main() {
   Map<int, List<int>> cleanMarks(int rows) => {
-        for (var row = 0; row < rows; row++) row: [row % 4],
-      };
+    for (var row = 0; row < rows; row++) row: [row % 4],
+  };
 
   test('clean sheet: every row detected with the marked column', () {
     final sheet = buildSheetImage(

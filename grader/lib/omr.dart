@@ -61,9 +61,9 @@ class OmrResult {
 
   /// 1-based sheet row numbers that need manual review.
   List<int> get reviewRows => [
-        for (var i = 0; i < rows.length; i++)
-          if (rows[i].status == RowStatus.needsReview) i + 1,
-      ];
+    for (var i = 0; i < rows.length; i++)
+      if (rows[i].status == RowStatus.needsReview) i + 1,
+  ];
 }
 
 class OmrConfig {
@@ -71,7 +71,7 @@ class OmrConfig {
     this.darkLuma = 128,
     this.filledMin = 0.45,
     this.emptyMax = 0.20,
-    this.cornerWindowFraction = 0.06,
+    this.cornerWindowFraction = 0.04,
     this.sampleRadiusFactor = 0.7,
   });
 
@@ -86,6 +86,8 @@ class OmrConfig {
   final double emptyMax;
 
   /// Half-size of each corner search window as a fraction of the page size.
+  /// Kept tight so nearby page content (title text, the QR code) stays out
+  /// of the window; a second, mark-sized pass refines the centroid.
   final double cornerWindowFraction;
 
   /// Bubble sampling radius as a fraction of the printed bubble radius
@@ -101,15 +103,15 @@ OmrResult detectMarks(
   required int optionsPerQuestion,
   OmrConfig config = const OmrConfig(),
 }) {
-  final gray =
-      source.numChannels == 1 ? source : img.grayscale(source.clone());
+  final gray = source.numChannels == 1 ? source : img.grayscale(source.clone());
   final corners = _findRegistrationMarks(gray, config);
 
   // px-per-mm estimated from the detected mark spacing, for the sample radius.
   final markCenters = geom.registrationMarkCentersMm();
   final spanXMm = markCenters[1].x - markCenters[0].x;
   final spanYMm = markCenters[2].y - markCenters[0].y;
-  final pxPerMm = ((corners[1].x - corners[0].x).abs() / spanXMm +
+  final pxPerMm =
+      ((corners[1].x - corners[0].x).abs() / spanXMm +
           (corners[2].y - corners[0].y).abs() / spanYMm) /
       2;
   final radiusPx = geom.bubbleRadiusMm * config.sampleRadiusFactor * pxPerMm;
@@ -163,33 +165,69 @@ List<_Point> _findRegistrationMarks(img.Image gray, OmrConfig config) {
   final halfW = (gray.width * config.cornerWindowFraction).round();
   final halfH = (gray.height * config.cornerWindowFraction).round();
 
+  final expectedArea = geom.regSizeMm * scaleX * geom.regSizeMm * scaleY;
   final found = <_Point>[];
   for (var i = 0; i < 4; i++) {
-    final cx = (centers[i].x * scaleX).round();
-    final cy = (centers[i].y * scaleY).round();
-    var darkCount = 0;
-    var sumX = 0.0;
-    var sumY = 0.0;
-    for (var y = cy - halfH; y <= cy + halfH; y++) {
-      if (y < 0 || y >= gray.height) continue;
-      for (var x = cx - halfW; x <= cx + halfW; x++) {
-        if (x < 0 || x >= gray.width) continue;
-        if (gray.getPixel(x, y).r < config.darkLuma) {
-          darkCount++;
-          sumX += x;
-          sumY += y;
-        }
-      }
-    }
-    final expectedArea = geom.regSizeMm * scaleX * geom.regSizeMm * scaleY;
-    if (darkCount < expectedArea * 0.25) {
+    // Coarse pass: centroid of ink in a window around the expected position.
+    final coarse = _darkCentroid(
+      gray,
+      cx: (centers[i].x * scaleX).round(),
+      cy: (centers[i].y * scaleY).round(),
+      halfW: halfW,
+      halfH: halfH,
+      darkLuma: config.darkLuma,
+    );
+    if (coarse == null || coarse.count < expectedArea * 0.25) {
       throw OmrException(
         'registration mark not found in the ${cornerNames[i]} corner',
       );
     }
-    found.add((x: sumX / darkCount, y: sumY / darkCount));
+    // Refinement pass: recenter a mark-sized window on the coarse centroid so
+    // stray ink at the window edge cannot bias the result.
+    final refineHalfW = (geom.regSizeMm * 0.9 * scaleX).round();
+    final refineHalfH = (geom.regSizeMm * 0.9 * scaleY).round();
+    final fine = _darkCentroid(
+      gray,
+      cx: coarse.x.round(),
+      cy: coarse.y.round(),
+      halfW: refineHalfW,
+      halfH: refineHalfH,
+      darkLuma: config.darkLuma,
+    );
+    if (fine == null || fine.count < expectedArea * 0.25) {
+      throw OmrException(
+        'registration mark not found in the ${cornerNames[i]} corner',
+      );
+    }
+    found.add((x: fine.x, y: fine.y));
   }
   return found;
+}
+
+({double x, double y, int count})? _darkCentroid(
+  img.Image gray, {
+  required int cx,
+  required int cy,
+  required int halfW,
+  required int halfH,
+  required int darkLuma,
+}) {
+  var darkCount = 0;
+  var sumX = 0.0;
+  var sumY = 0.0;
+  for (var y = cy - halfH; y <= cy + halfH; y++) {
+    if (y < 0 || y >= gray.height) continue;
+    for (var x = cx - halfW; x <= cx + halfW; x++) {
+      if (x < 0 || x >= gray.width) continue;
+      if (gray.getPixel(x, y).r < darkLuma) {
+        darkCount++;
+        sumX += x;
+        sumY += y;
+      }
+    }
+  }
+  if (darkCount == 0) return null;
+  return (x: sumX / darkCount, y: sumY / darkCount, count: darkCount);
 }
 
 double _darkFraction(
@@ -201,13 +239,17 @@ double _darkFraction(
   var total = 0;
   var dark = 0;
   final r2 = radius * radius;
-  for (var y = (center.y - radius).floor();
-      y <= (center.y + radius).ceil();
-      y++) {
+  for (
+    var y = (center.y - radius).floor();
+    y <= (center.y + radius).ceil();
+    y++
+  ) {
     if (y < 0 || y >= gray.height) continue;
-    for (var x = (center.x - radius).floor();
-        x <= (center.x + radius).ceil();
-        x++) {
+    for (
+      var x = (center.x - radius).floor();
+      x <= (center.x + radius).ceil();
+      x++
+    ) {
       if (x < 0 || x >= gray.width) continue;
       final dx = x - center.x;
       final dy = y - center.y;
@@ -236,11 +278,13 @@ class _BilinearMapper {
   _Point map(double xMm, double yMm) {
     final u = (xMm - _mm[0].x) / (_mm[1].x - _mm[0].x);
     final v = (yMm - _mm[0].y) / (_mm[2].y - _mm[0].y);
-    final x = (1 - u) * (1 - v) * _cornersPx[0].x +
+    final x =
+        (1 - u) * (1 - v) * _cornersPx[0].x +
         u * (1 - v) * _cornersPx[1].x +
         (1 - u) * v * _cornersPx[2].x +
         u * v * _cornersPx[3].x;
-    final y = (1 - u) * (1 - v) * _cornersPx[0].y +
+    final y =
+        (1 - u) * (1 - v) * _cornersPx[0].y +
         u * (1 - v) * _cornersPx[1].y +
         (1 - u) * v * _cornersPx[2].y +
         u * v * _cornersPx[3].y;

@@ -62,6 +62,11 @@ When you change one of these, update **all** the listed mirrors in the same chan
   README "QR payload", and bump `version` on any field change.
 - **The algorithm** → `rng.py` + `select.py`, `rng.dart` + `select.dart`,
   `shared/test-vectors.json`, README.
+- **Printed sheet geometry** (registration marks, bubble grid) →
+  `generator/src/mcexam/render.py` (draws it) **and**
+  `grader/lib/sheet_geometry.dart` (OMR reads it). Both in mm; render.py uses
+  PDF bottom-left coordinates, sheet_geometry.dart top-left. The fixture test
+  `grader/test/omr_fixture_test.dart` (real rendered page) catches drift.
 
 `lint`, `generate`, and `scramble` all validate through the **same** `validator.py`
 — don't add a second, divergent validation path.

@@ -43,10 +43,15 @@ List<({double x, double y})> registrationMarkCentersMm() {
 }
 
 /// Centre of the bubble at [row], [col] (0-based), top-left origin.
-({double x, double y}) bubbleCenterMm(int row, int col, int optionsPerQuestion) {
+({double x, double y}) bubbleCenterMm(
+  int row,
+  int col,
+  int optionsPerQuestion,
+) {
   final block = row ~/ rowsPerBlock;
   final rowInBlock = row % rowsPerBlock;
-  final x = gridLeftMm +
+  final x =
+      gridLeftMm +
       block * blockWidthMm(optionsPerQuestion) +
       blockLabelWidthMm +
       (col + 0.5) * bubblePitchMm;
