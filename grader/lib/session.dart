@@ -123,8 +123,10 @@ class GraderSession extends ChangeNotifier {
       notifyListeners();
       return false;
     }
-    final totalRows =
-        payload.counts.values.fold(0, (sum, count) => sum + count);
+    final totalRows = payload.counts.values.fold(
+      0,
+      (sum, count) => sum + count,
+    );
     final OmrResult detected;
     try {
       detected = detectMarks(

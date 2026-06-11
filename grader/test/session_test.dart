@@ -20,12 +20,12 @@ const qrRaw = 'v1|1|0|2|2|1|fp012345';
 const correctPositions = [3, 1, 0, 2, 3];
 
 img.Image correctSheet() => buildSheetImage(
-      rows: 5,
-      optionsPerQuestion: 4,
-      filledByRow: {
-        for (var row = 0; row < 5; row++) row: [correctPositions[row]],
-      },
-    );
+  rows: 5,
+  optionsPerQuestion: 4,
+  filledByRow: {
+    for (var row = 0; row < 5; row++) row: [correctPositions[row]],
+  },
+);
 
 void main() {
   test('happy flow: key -> QR -> sheet -> full score', () {

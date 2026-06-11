@@ -55,7 +55,10 @@ class SheetGuidePainter extends CustomPainter {
       ..addRect(Offset.zero & size)
       ..addRect(guide)
       ..fillType = PathFillType.evenOdd;
-    canvas.drawPath(outside, Paint()..color = Colors.black.withValues(alpha: 0.55));
+    canvas.drawPath(
+      outside,
+      Paint()..color = Colors.black.withValues(alpha: 0.55),
+    );
 
     // Page frame.
     final border = Paint()

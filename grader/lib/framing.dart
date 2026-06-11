@@ -52,23 +52,32 @@ List<Rect> cornerMarkTargets(Rect guide) {
 /// canvas, so it can be applied to a captured photo of any resolution with
 /// the same aspect.
 Rect guideAsFraction(Rect guide, Size canvasSize) => Rect.fromLTWH(
-      guide.left / canvasSize.width,
-      guide.top / canvasSize.height,
-      guide.width / canvasSize.width,
-      guide.height / canvasSize.height,
-    );
+  guide.left / canvasSize.width,
+  guide.top / canvasSize.height,
+  guide.width / canvasSize.width,
+  guide.height / canvasSize.height,
+);
 
 /// Crops [photo] to the page area indicated by the on-screen guide,
 /// expressed as fractions of the photo dimensions. This restores the OMR
 /// assumption that the image is (roughly) the page.
 img.Image cropToGuideFraction(img.Image photo, Rect guideFraction) {
-  final x = (guideFraction.left * photo.width).round().clamp(0, photo.width - 1);
-  final y =
-      (guideFraction.top * photo.height).round().clamp(0, photo.height - 1);
-  final width =
-      (guideFraction.width * photo.width).round().clamp(1, photo.width - x);
-  final height =
-      (guideFraction.height * photo.height).round().clamp(1, photo.height - y);
+  final x = (guideFraction.left * photo.width).round().clamp(
+    0,
+    photo.width - 1,
+  );
+  final y = (guideFraction.top * photo.height).round().clamp(
+    0,
+    photo.height - 1,
+  );
+  final width = (guideFraction.width * photo.width).round().clamp(
+    1,
+    photo.width - x,
+  );
+  final height = (guideFraction.height * photo.height).round().clamp(
+    1,
+    photo.height - y,
+  );
   return img.copyCrop(photo, x: x, y: y, width: width, height: height);
 }
 
@@ -105,9 +114,9 @@ String framingHintFor(Object error) {
   if (error is OmrException) {
     final text = error.message;
     if (text.contains('registration mark not found')) {
-      final corner = RegExp('top-left|top-right|bottom-left|bottom-right')
-          .firstMatch(text)
-          ?.group(0);
+      final corner = RegExp(
+        'top-left|top-right|bottom-left|bottom-right',
+      ).firstMatch(text)?.group(0);
       return 'The ${corner ?? 'corner'} alignment square was not found.'
           ' Fit the whole sheet inside the frame, with each black corner'
           ' square inside its bracket.';

@@ -13,8 +13,10 @@ void main() {
     test('portrait canvas: A4 aspect, centered, inset', () {
       const canvas = Size(400, 800);
       final guide = pageGuideRect(canvas);
-      expect(guide.width / guide.height,
-          closeTo(geom.pageWidthMm / geom.pageHeightMm, 1e-9));
+      expect(
+        guide.width / guide.height,
+        closeTo(geom.pageWidthMm / geom.pageHeightMm, 1e-9),
+      );
       expect(guide.center.dx, closeTo(200, 1e-9));
       expect(guide.center.dy, closeTo(400, 1e-9));
       expect(guide.left, greaterThanOrEqualTo(400 * 0.05 - 1e-9));
@@ -23,8 +25,10 @@ void main() {
     test('short landscape canvas: height-bound', () {
       const canvas = Size(800, 400);
       final guide = pageGuideRect(canvas);
-      expect(guide.width / guide.height,
-          closeTo(geom.pageWidthMm / geom.pageHeightMm, 1e-9));
+      expect(
+        guide.width / guide.height,
+        closeTo(geom.pageWidthMm / geom.pageHeightMm, 1e-9),
+      );
       expect(guide.height, lessThanOrEqualTo(400));
       expect(guide.top, greaterThanOrEqualTo(400 * 0.05 - 1e-9));
     });
@@ -68,8 +72,10 @@ void main() {
       dstY: guide.top.round(),
     );
 
-    final fraction =
-        guideAsFraction(guide, const Size(photoW * 1.0, photoH * 1.0));
+    final fraction = guideAsFraction(
+      guide,
+      const Size(photoW * 1.0, photoH * 1.0),
+    );
     final cropped = cropToGuideFraction(photo, fraction);
     final result = detectMarks(cropped, rows: 5, optionsPerQuestion: 4);
     expect(result.needsReview, isFalse);
