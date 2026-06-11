@@ -79,6 +79,20 @@ void main() {
     );
   });
 
+  test('toCsv quotes a bare carriage return in a name', () {
+    final book = GradeBook()
+      ..record(
+        GradeRecord(
+          variantId: 1,
+          score: 1,
+          total: 5,
+          recordedAt: t1,
+          studentName: 'Bad\rName',
+        ),
+      );
+    expect(book.toCsv(), contains('"Bad\rName"'));
+  });
+
   test('recordFor looks up by variant id', () {
     final book = GradeBook()
       ..record(GradeRecord(variantId: 3, score: 2, total: 5, recordedAt: t1));
