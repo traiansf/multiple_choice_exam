@@ -35,14 +35,18 @@ void main() {
       optionsPerQuestion - 1,
       optionsPerQuestion,
     );
-    for (var x = ((first.x - 7) * pxPerMm).round();
-        x <= ((last.x + 7) * pxPerMm).round();
-        x++) {
+    for (
+      var x = ((first.x - 7) * pxPerMm).round();
+      x <= ((last.x + 7) * pxPerMm).round();
+      x++
+    ) {
       // ±3mm: inside this row's annotation band (±3.15mm) but clear of the
       // neighbouring rows' bands (7mm pitch).
-      for (var y = ((first.y - 3) * pxPerMm).round();
-          y <= ((first.y + 3) * pxPerMm).round();
-          y++) {
+      for (
+        var y = ((first.y - 3) * pxPerMm).round();
+        y <= ((first.y + 3) * pxPerMm).round();
+        y++
+      ) {
         final pixel = sheet.getPixel(x, y);
         if (pixel.r > 180 && pixel.g < 100 && pixel.b < 100) return true;
       }

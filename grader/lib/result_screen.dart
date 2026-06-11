@@ -2,6 +2,8 @@
 /// manual-review notice when OMR flagged rows. Pure UI over GraderSession.
 library;
 
+import 'dart:typed_data';
+
 import 'package:flutter/material.dart';
 
 import 'session.dart';
@@ -42,14 +44,24 @@ class ResultScreen extends StatelessWidget {
               ),
             const SizedBox(width: 12),
             Expanded(
-              child: FilledButton.icon(
-                icon: const Icon(Icons.qr_code_scanner),
-                label: const Text('Next sheet'),
-                onPressed: () {
-                  session.nextSheet();
-                  Navigator.of(context).pop('next');
-                },
-              ),
+              child: needsReview
+                  ? FilledButton.icon(
+                      icon: const Icon(Icons.qr_code_scanner),
+                      label: const Text('Next sheet'),
+                      onPressed: () {
+                        session.nextSheet();
+                        Navigator.of(context).pop('next');
+                      },
+                    )
+                  : FilledButton.icon(
+                      icon: const Icon(Icons.check),
+                      label: const Text('Confirm — next sheet'),
+                      onPressed: () {
+                        session.confirmResult();
+                        session.nextSheet();
+                        Navigator.of(context).pop('next');
+                      },
+                    ),
             ),
           ],
         ),
@@ -92,6 +104,26 @@ class _ReviewNotice extends StatelessWidget {
   }
 }
 
+class _LabeledSheet extends StatelessWidget {
+  const _LabeledSheet({required this.label, required this.png});
+
+  final String label;
+  final Uint8List png;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        Text(label, style: Theme.of(context).textTheme.labelLarge),
+        const SizedBox(height: 4),
+        // Both images are full-page renders with the same A4 aspect, so
+        // equal-width columns show them scaled to match.
+        Expanded(child: Image.memory(png, fit: BoxFit.contain)),
+      ],
+    );
+  }
+}
+
 class _GradeView extends StatelessWidget {
   const _GradeView({required this.session});
 
@@ -119,6 +151,33 @@ class _GradeView extends StatelessWidget {
             ],
           ),
         ),
+        if (session.referenceSheetPng != null &&
+            session.scannedSheetPng != null)
+          SizedBox(
+            height: 260,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(
+                    child: _LabeledSheet(
+                      label: 'Correct answers',
+                      png: session.referenceSheetPng!,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: _LabeledSheet(
+                      label: 'Scanned sheet',
+                      png: session.scannedSheetPng!,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        const SizedBox(height: 12),
         const Divider(height: 1),
         Expanded(
           child: ListView.builder(
