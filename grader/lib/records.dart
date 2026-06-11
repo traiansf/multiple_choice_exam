@@ -43,6 +43,11 @@ class GradeBook {
   void clear() => _byVariant.clear();
 
   /// The report: one row per variant, sorted, ISO-8601 UTC timestamps.
+  ///
+  /// Every field today is an int, bool, or ISO timestamp, so no CSV quoting
+  /// is needed. The moment a free-text column is added (issue #8: student
+  /// names), fields must be quoted/escaped per RFC 4180 — names contain
+  /// commas.
   String toCsv() {
     final buffer = StringBuffer(
       'variant_id,score,total,percent,manual,recorded_at\n',

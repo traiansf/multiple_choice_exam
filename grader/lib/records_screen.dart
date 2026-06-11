@@ -2,6 +2,7 @@
 /// report export (share sheet). Pure UI over GraderSession.gradeBook.
 library;
 
+import 'dart:convert';
 import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
@@ -17,15 +18,18 @@ class RecordsScreen extends StatelessWidget {
   Future<void> _export() async {
     final csv = session.gradeBook.toCsv();
     final title = session.answerKey?.examTitle ?? 'exam';
+    final filename = '$title - grades.csv';
     await SharePlus.instance.share(
       ShareParams(
         files: [
           XFile.fromData(
-            Uint8List.fromList(csv.codeUnits),
+            Uint8List.fromList(utf8.encode(csv)),
             mimeType: 'text/csv',
-            name: '$title - grades.csv',
+            name: filename,
           ),
         ],
+        // XFile.fromData's name is ignored on most platforms; this isn't.
+        fileNameOverrides: [filename],
         subject: '$title — grade report',
       ),
     );
@@ -48,10 +52,13 @@ class RecordsScreen extends StatelessWidget {
               final record = records[index];
               return ListTile(
                 dense: true,
-                leading: const Icon(Icons.assignment_turned_in),
+                leading: Icon(
+                  record.manual ? Icons.edit : Icons.assignment_turned_in,
+                ),
                 title: Text(
                   'Variant ${record.variantId.toString().padLeft(3, '0')}',
                 ),
+                subtitle: record.manual ? const Text('graded manually') : null,
                 trailing: Text(
                   '${record.score} / ${record.total}'
                   '  (${record.percent.toStringAsFixed(1)}%)',

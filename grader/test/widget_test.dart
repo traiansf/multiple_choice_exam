@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:grader/main.dart';
 import 'package:grader/records_screen.dart';
@@ -205,7 +206,10 @@ void main() {
       }),
     );
     await tester.pumpWidget(MaterialApp(home: ResultScreen(session: session)));
-    expect(find.byType(Image), findsNothing);
+    // No side-by-side comparison, but the scan itself is shown so the
+    // grader can grade by hand.
+    expect(find.byType(Image), findsOneWidget);
+    expect(find.text('Correct answers'), findsNothing);
     expect(find.text('Next sheet'), findsOneWidget);
     expect(find.text('Confirm — next sheet'), findsNothing);
   });
@@ -306,6 +310,54 @@ void main() {
     expect(find.textContaining('4 / 5'), findsOneWidget);
     expect(find.textContaining('80.0%'), findsOneWidget);
     expect(find.text('Export report (CSV)'), findsOneWidget);
+    expect(find.text('graded manually'), findsNothing);
+  });
+
+  testWidgets('records screen marks manually graded rows', (tester) async {
+    final session = GraderSession()
+      ..loadKey(keyJson)
+      ..setQr(qrRaw);
+    session.processSheet(
+      sheetWith({
+        0: [3],
+        1: [1, 2],
+        2: [0],
+        3: [2],
+        4: [3],
+      }),
+    );
+    session.submitManualGrade(3);
+    await tester.pumpWidget(MaterialApp(home: RecordsScreen(session: session)));
+    expect(find.text('graded manually'), findsOneWidget);
+    expect(find.byIcon(Icons.edit), findsOneWidget);
+  });
+
+  testWidgets('export button shares the CSV without errors', (tester) async {
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(
+          const MethodChannel('dev.fluttercommunity.plus/share'),
+          (call) async => 'dev.fluttercommunity.plus/share/unavailable',
+        );
+    addTearDown(
+      () => TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+          .setMockMethodCallHandler(
+            const MethodChannel('dev.fluttercommunity.plus/share'),
+            null,
+          ),
+    );
+    final session = GraderSession()
+      ..loadKey(keyJson)
+      ..setQr(qrRaw);
+    session.processSheet(
+      sheetWith({
+        for (var row = 0; row < 5; row++) row: [correctPositions[row]],
+      }),
+    );
+    session.confirmResult();
+    await tester.pumpWidget(MaterialApp(home: RecordsScreen(session: session)));
+    await tester.tap(find.text('Export report (CSV)'));
+    await tester.pumpAndSettle();
+    expect(tester.takeException(), isNull);
   });
 
   testWidgets('replace-key dialog warns about discarding recorded grades', (

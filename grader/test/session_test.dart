@@ -236,7 +236,7 @@ void main() {
       expect(scanned.width, reference.width);
     });
 
-    test('review-flagged sheet exposes no comparison images', () {
+    test('review-flagged sheet keeps the scan but has no reference', () {
       final session = GraderSession()
         ..loadKey(keyJson)
         ..setQr(qrRaw);
@@ -255,7 +255,12 @@ void main() {
       );
       expect(session.omrResult!.needsReview, isTrue);
       expect(session.referenceSheetPng, isNull);
-      expect(session.scannedSheetPng, isNull);
+      expect(
+        session.scannedSheetPng,
+        isNotNull,
+        reason: 'the grader needs to see the scan to grade by hand',
+      );
+      expect(session.scannedSheetPng!.sublist(0, 4), pngMagic);
     });
 
     test('confirm lifecycle: false -> confirmed -> reset by nextSheet', () {
@@ -383,6 +388,36 @@ void main() {
       expect(session.gradeBook.length, 1);
       expect(session.gradeBook.records.single.score, 2);
       expect(session.gradeBook.records.single.manual, isTrue);
+    });
+
+    test('manual grade accepts the exact boundaries 0 and total', () {
+      final session = GraderSession()
+        ..loadKey(keyJson)
+        ..setQr(qrRaw);
+      session.processSheet(reviewSheet());
+      session.submitManualGrade(0);
+      expect(session.gradeBook.records.single.score, 0);
+
+      session.nextSheet();
+      session.setQr(qrRaw);
+      session.processSheet(reviewSheet());
+      session.submitManualGrade(5);
+      expect(session.gradeBook.records.single.score, 5);
+    });
+
+    test('automatic grade replaces an earlier manual grade', () {
+      final session = GraderSession()
+        ..loadKey(keyJson)
+        ..setQr(qrRaw);
+      session.processSheet(reviewSheet());
+      session.submitManualGrade(2);
+      session.nextSheet();
+      session.setQr(qrRaw);
+      session.processSheet(correctSheet());
+      session.confirmResult();
+      expect(session.gradeBook.length, 1);
+      expect(session.gradeBook.records.single.score, 5);
+      expect(session.gradeBook.records.single.manual, isFalse);
     });
 
     test('manual grade outside 0..total is rejected', () {

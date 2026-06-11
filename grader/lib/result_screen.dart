@@ -45,6 +45,7 @@ class _ResultScreenState extends State<ResultScreen> {
           ? _ReviewNotice(
               rows: omr!.reviewRows,
               total: omr.rows.length,
+              scanPng: session.scannedSheetPng,
               onSubmit: (score) => _finish(() {
                 session.submitManualGrade(score);
                 session.nextSheet();
@@ -90,11 +91,16 @@ class _ReviewNotice extends StatefulWidget {
   const _ReviewNotice({
     required this.rows,
     required this.total,
+    required this.scanPng,
     required this.onSubmit,
   });
 
   final List<int> rows;
   final int total;
+
+  /// The scanned page with the flagged rows outlined, so the grader can see
+  /// what the camera saw while grading by hand.
+  final Uint8List? scanPng;
   final void Function(int score) onSubmit;
 
   @override
@@ -144,6 +150,14 @@ class _ReviewNoticeState extends State<_ReviewNotice> {
             ' (multiple or faint marks). Retake the photo, or inspect the'
             ' sheet and grade it by hand below.',
           ),
+          if (widget.scanPng != null) ...[
+            const SizedBox(height: 16),
+            Expanded(
+              child: Center(
+                child: Image.memory(widget.scanPng!, fit: BoxFit.contain),
+              ),
+            ),
+          ],
           const SizedBox(height: 24),
           Row(
             children: [

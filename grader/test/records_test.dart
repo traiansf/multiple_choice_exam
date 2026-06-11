@@ -50,6 +50,16 @@ void main() {
     );
   });
 
+  test('percent guards against a zero total', () {
+    final record = GradeRecord(
+      variantId: 1,
+      score: 0,
+      total: 0,
+      recordedAt: t1,
+    );
+    expect(record.percent, 0.0);
+  });
+
   test('empty book CSV is the header only', () {
     expect(
       GradeBook().toCsv(),
