@@ -89,6 +89,16 @@ def title_lines(title: str, font: str, size: float, width: float) -> list[str]:
     return [lines[0], second + " …"]
 
 
+def clamp_line(text: str, font: str, size: float, width: float) -> str:
+    """A single line that fits in `width`, ellipsized when trimmed."""
+    if pdfmetrics.stringWidth(text, font, size) <= width:
+        return text
+    trimmed = text
+    while trimmed and pdfmetrics.stringWidth(trimmed + " …", font, size) > width:
+        trimmed = trimmed[:-1].rstrip()
+    return trimmed + " …"
+
+
 def _body_font() -> str:
     """DejaVu Sans if available (full Unicode for math symbols), else Helvetica."""
     if "ExamBody" in pdfmetrics.getRegisteredFontNames():
@@ -120,7 +130,7 @@ def render_variant(
     canvas = Canvas(str(path), pagesize=A4, invariant=1, pageCompression=0)
     _draw_answer_sheet(canvas, exam.title, variant_id, rows, m, qr_png_bytes, font)
     canvas.showPage()
-    _draw_questions(canvas, exam, plan, variant_id, font)
+    _draw_questions(canvas, exam, plan, variant_id, font, qr_png_bytes)
     pages = canvas.getPageNumber()
     canvas.save()
     return pages
@@ -165,22 +175,54 @@ def _draw_answer_sheet(
             canvas.circle(x, y, BUBBLE_RADIUS, stroke=1, fill=0)
 
 
+QUESTION_PAGE_QR_SIZE = 18 * mm
+
+
 def _draw_questions(
-    canvas: Canvas, exam: Exam, plan: VariantPlan, variant_id: int, font: str
+    canvas: Canvas,
+    exam: Exam,
+    plan: VariantPlan,
+    variant_id: int,
+    font: str,
+    qr_png_bytes: bytes,
 ) -> None:
     section_titles = dict(zip(SECTION_KEYS, SECTION_NAMES, strict=True))
     width = PAGE_W - 2 * MARGIN
+    qr_image = ImageReader(io.BytesIO(qr_png_bytes))
     y = PAGE_H - MARGIN
+
+    def page_header() -> None:
+        """Issue #9: every question page re-identifies its variant — header
+        text plus a small QR top-right — so separated pages stay gradable."""
+        nonlocal y
+        canvas.drawImage(
+            qr_image,
+            PAGE_W - MARGIN - QUESTION_PAGE_QR_SIZE,
+            PAGE_H - MARGIN - QUESTION_PAGE_QR_SIZE,
+            QUESTION_PAGE_QR_SIZE,
+            QUESTION_PAGE_QR_SIZE,
+        )
+        header_width = PAGE_W - 2 * MARGIN - QUESTION_PAGE_QR_SIZE - 4 * mm
+        canvas.setFont(font, 14)
+        canvas.drawString(
+            MARGIN,
+            PAGE_H - MARGIN - 14,
+            clamp_line(exam.title, font, 14, header_width),
+        )
+        # The variant number is its own unconditional line: a long title must
+        # never swallow the page's human-readable identification.
+        canvas.setFont(font, 12)
+        canvas.drawString(MARGIN, PAGE_H - MARGIN - 30, f"Variant {variant_id:03d}")
+        # Content starts below whichever is taller: the QR or the header.
+        y = PAGE_H - MARGIN - QUESTION_PAGE_QR_SIZE - 8
 
     def ensure_space(needed: float) -> None:
         nonlocal y
         if y - needed < MARGIN:
             canvas.showPage()
-            y = PAGE_H - MARGIN
+            page_header()
 
-    canvas.setFont(font, 14)
-    canvas.drawString(MARGIN, y - 14, f"{exam.title} — Variant {variant_id:03d}")
-    y -= 30
+    page_header()
 
     current_section = None
     for number, sheet_question in enumerate(plan.sheet, start=1):
