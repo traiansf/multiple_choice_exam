@@ -1,0 +1,37 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "mcexam"
+version = "0.1.0"
+description = "Randomized multiple-choice exam generator (PDF variants + QR + OMR answer sheet)"
+requires-python = ">=3.11"
+license = "GPL-3.0-or-later"
+dependencies = [
+    "click>=8.1",
+    "reportlab>=4.0",
+    "segno>=1.6",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8",
+    "ruff>=0.5",
+]
+
+[project.scripts]
+mcexam = "mcexam.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.ruff]
+line-length = 100
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
