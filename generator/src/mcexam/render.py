@@ -89,6 +89,16 @@ def title_lines(title: str, font: str, size: float, width: float) -> list[str]:
     return [lines[0], second + " …"]
 
 
+def clamp_line(text: str, font: str, size: float, width: float) -> str:
+    """A single line that fits in `width`, ellipsized when trimmed."""
+    if pdfmetrics.stringWidth(text, font, size) <= width:
+        return text
+    trimmed = text
+    while trimmed and pdfmetrics.stringWidth(trimmed + " …", font, size) > width:
+        trimmed = trimmed[:-1].rstrip()
+    return trimmed + " …"
+
+
 def _body_font() -> str:
     """DejaVu Sans if available (full Unicode for math symbols), else Helvetica."""
     if "ExamBody" in pdfmetrics.getRegisteredFontNames():
@@ -192,12 +202,18 @@ def _draw_questions(
             QUESTION_PAGE_QR_SIZE,
             QUESTION_PAGE_QR_SIZE,
         )
-        canvas.setFont(font, 14)
-        header = f"{exam.title} — Variant {variant_id:03d}"
         header_width = PAGE_W - 2 * MARGIN - QUESTION_PAGE_QR_SIZE - 4 * mm
-        lines = simpleSplit(header, font, 14, header_width)
-        canvas.drawString(MARGIN, PAGE_H - MARGIN - 14, lines[0])
-        # Content starts below whichever is taller: the QR or the header line.
+        canvas.setFont(font, 14)
+        canvas.drawString(
+            MARGIN,
+            PAGE_H - MARGIN - 14,
+            clamp_line(exam.title, font, 14, header_width),
+        )
+        # The variant number is its own unconditional line: a long title must
+        # never swallow the page's human-readable identification.
+        canvas.setFont(font, 12)
+        canvas.drawString(MARGIN, PAGE_H - MARGIN - 30, f"Variant {variant_id:03d}")
+        # Content starts below whichever is taller: the QR or the header.
         y = PAGE_H - MARGIN - QUESTION_PAGE_QR_SIZE - 8
 
     def ensure_space(needed: float) -> None:

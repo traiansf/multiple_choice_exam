@@ -141,3 +141,32 @@ def test_every_page_carries_the_variant_qr(tmp_path) -> None:
     data = out.read_bytes()
     assert pages >= 2
     assert data.count(b" Do") == pages
+
+
+def test_clamp_line_fits_or_ellipsizes() -> None:
+    from reportlab.pdfbase.pdfmetrics import stringWidth
+
+    from mcexam.render import _body_font, clamp_line
+
+    font = _body_font()
+    assert clamp_line("Short", font, 14, 400.0) == "Short"
+    long_title = "Introduction to Quantum Mechanics and Computational Physics for Engineers"
+    clamped = clamp_line(long_title, font, 14, 250.0)
+    assert clamped.endswith("…")
+    assert stringWidth(clamped, font, 14) <= 250.0
+
+
+def test_long_title_renders_question_pages(tmp_path) -> None:
+    exam = load_exam(
+        SAMPLE_MD.replace(
+            "# Sample Exam",
+            "# Introduction to Quantum Mechanics and Computational Physics"
+            " for Engineers — Midterm Examination, Summer Session",
+        )
+    )
+    plan = build_variant(1, exam.section_sizes(), {"easy": 2, "medium": 2, "hard": 1}, 4)
+    out = tmp_path / "long.pdf"
+    pages = render_variant(out, exam, plan, qr_png("v1|1|1|2|2|1|deadbeef"), 1)
+    data = out.read_bytes()
+    assert data.startswith(b"%PDF")
+    assert data.count(b" Do") == pages
