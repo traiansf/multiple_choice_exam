@@ -54,7 +54,21 @@ class OmrResult {
 
   final List<OmrRow> rows;
 
+  /// Raw per-row marks (null = blank or flagged). Diagnostics only — use
+  /// [marksForGrading] when feeding grade(), so flagged rows cannot be
+  /// silently scored as unanswered.
   List<int?> get marks => [for (final row in rows) row.mark];
+
+  /// Marks safe to pass to grading. Throws [OmrException] when any row needs
+  /// manual review: grading such a sheet would silently count the flagged
+  /// rows as unanswered, violating the flag-don't-guess contract. Resolve
+  /// [reviewRows] by hand first.
+  List<int?> get marksForGrading {
+    if (needsReview) {
+      throw OmrException('sheet has rows needing manual review: $reviewRows');
+    }
+    return marks;
+  }
 
   bool get needsReview =>
       rows.any((row) => row.status == RowStatus.needsReview);
@@ -75,7 +89,9 @@ class OmrConfig {
     this.sampleRadiusFactor = 0.7,
   });
 
-  /// Luminance below which a pixel counts as ink.
+  /// Luminance below which a pixel counts as ink. This is a single global
+  /// threshold, tuned for synthetic images and clean print scans; unevenly
+  /// lit phone photos will need adaptive thresholding (camera milestone).
   final int darkLuma;
 
   /// Dark fraction at or above which a bubble counts as filled.
@@ -97,12 +113,29 @@ class OmrConfig {
 
 typedef _Point = ({double x, double y});
 
+/// Detects the marks on an answer-sheet image with [rows] printed grid rows.
+///
+/// [rows] must match what was printed (the QR counts); rows requested beyond
+/// the printed grid sample empty paper and read back as blank — detection
+/// cannot tell an unprinted row from an unanswered one.
 OmrResult detectMarks(
   img.Image source, {
   required int rows,
   required int optionsPerQuestion,
   OmrConfig config = const OmrConfig(),
 }) {
+  if (rows <= 0 || optionsPerQuestion <= 0) {
+    throw ArgumentError(
+      'rows and optionsPerQuestion must be positive'
+      ' (got $rows, $optionsPerQuestion)',
+    );
+  }
+  if (rows > geom.maxRows(optionsPerQuestion)) {
+    throw OmrException(
+      '$rows rows exceed the printed sheet capacity of'
+      ' ${geom.maxRows(optionsPerQuestion)} for $optionsPerQuestion options',
+    );
+  }
   final gray = source.numChannels == 1 ? source : img.grayscale(source.clone());
   final corners = _findRegistrationMarks(gray, config);
 
@@ -114,6 +147,12 @@ OmrResult detectMarks(
       ((corners[1].x - corners[0].x).abs() / spanXMm +
           (corners[2].y - corners[0].y).abs() / spanYMm) /
       2;
+  if (pxPerMm < 2) {
+    throw OmrException(
+      'image resolution too low (${pxPerMm.toStringAsFixed(2)} px/mm);'
+      ' at least 2 px/mm is needed to sample bubbles reliably',
+    );
+  }
   final radiusPx = geom.bubbleRadiusMm * config.sampleRadiusFactor * pxPerMm;
 
   final mapper = _BilinearMapper(corners);

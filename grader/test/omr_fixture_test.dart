@@ -43,6 +43,61 @@ void main() {
     expect(result.rows.every((r) => r.status == RowStatus.marked), isTrue);
   });
 
+  test('printed geometry on the real PNG matches sheet_geometry (anchor)', () {
+    // Independent drift anchor: the stamped test above moves its stamps WITH
+    // any sheet_geometry constant drift, so it cannot catch one. This test
+    // measures the PRINTED ink (drawn by render.py) and compares its position
+    // to the Dart geometry directly: the centroid of dark pixels in a small
+    // window around each expected position must coincide with the expected
+    // position. A 1mm constant drift fails the 0.7mm tolerance.
+    final bytes = File('test/fixtures/variant-001-page1.png').readAsBytesSync();
+    final sheet = img.decodePng(bytes)!;
+    final pxPerMm = sheet.width / geom.pageWidthMm;
+
+    ({double x, double y}) darkCentroid(double xMm, double yMm, double halfMm) {
+      var count = 0;
+      var sumX = 0.0;
+      var sumY = 0.0;
+      final half = (halfMm * pxPerMm).round();
+      final cx = (xMm * pxPerMm).round();
+      final cy = (yMm * pxPerMm).round();
+      for (var y = cy - half; y <= cy + half; y++) {
+        for (var x = cx - half; x <= cx + half; x++) {
+          if (sheet.getPixel(x, y).luminance < 128) {
+            count++;
+            sumX += x;
+            sumY += y;
+          }
+        }
+      }
+      expect(count, greaterThan(0));
+      return (x: sumX / count / pxPerMm, y: sumY / count / pxPerMm);
+    }
+
+    const toleranceMm = 0.7;
+    for (final expected in geom.registrationMarkCentersMm()) {
+      final got = darkCentroid(expected.x, expected.y, 5);
+      expect((got.x - expected.x).abs(), lessThan(toleranceMm));
+      expect((got.y - expected.y).abs(), lessThan(toleranceMm));
+    }
+    // Two printed bubble rims (the ring's centroid is its center): first row
+    // first column, and last row last column.
+    for (final (row, col) in [(0, 0), (9, 3)]) {
+      final expected = geom.bubbleCenterMm(row, col, 4);
+      final got = darkCentroid(expected.x, expected.y, 3);
+      expect(
+        (got.x - expected.x).abs(),
+        lessThan(toleranceMm),
+        reason: 'bubble ($row,$col) x',
+      );
+      expect(
+        (got.y - expected.y).abs(),
+        lessThan(toleranceMm),
+        reason: 'bubble ($row,$col) y',
+      );
+    }
+  });
+
   test('unstamped real sheet reads as fully blank', () {
     final bytes = File('test/fixtures/variant-001-page1.png').readAsBytesSync();
     final sheet = img.decodePng(bytes)!;

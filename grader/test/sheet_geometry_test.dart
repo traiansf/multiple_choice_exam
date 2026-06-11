@@ -29,6 +29,10 @@ void main() {
     expect(geom.bubbleCenterMm(24, 0, 4), (x: 39.0, y: 70.0 + 24 * 7.0));
   });
 
+  test('max rows matches the Python renderer capacity (75 for M=4)', () {
+    expect(geom.maxRows(4), 75);
+  });
+
   test('page dimensions are A4', () {
     expect(geom.pageWidthMm, 210.0);
     expect(geom.pageHeightMm, 297.0);

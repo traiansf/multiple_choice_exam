@@ -1,66 +1,8 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:grader/omr.dart';
-import 'package:grader/sheet_geometry.dart' as geom;
 import 'package:image/image.dart' as img;
 
-/// Draws a synthetic answer-sheet page: white canvas, black registration
-/// squares, bubble outlines, and filled discs for the requested marks.
-img.Image buildSheetImage({
-  required int rows,
-  required int optionsPerQuestion,
-  double pxPerMm = 4,
-  Map<int, List<int>> filledByRow = const {},
-  Map<int, double> fillRadiusMmByRow = const {},
-  ({double x, double y}) offsetMm = (x: 0, y: 0),
-  bool omitTopLeftMark = false,
-}) {
-  final image = img.Image(
-    width: (geom.pageWidthMm * pxPerMm).round(),
-    height: (geom.pageHeightMm * pxPerMm).round(),
-  );
-  img.fill(image, color: img.ColorRgb8(255, 255, 255));
-  final black = img.ColorRgb8(0, 0, 0);
-
-  final markCenters = geom.registrationMarkCentersMm();
-  for (var i = 0; i < 4; i++) {
-    if (i == 0 && omitTopLeftMark) continue;
-    final c = markCenters[i];
-    img.fillRect(
-      image,
-      x1: ((c.x + offsetMm.x - geom.regSizeMm / 2) * pxPerMm).round(),
-      y1: ((c.y + offsetMm.y - geom.regSizeMm / 2) * pxPerMm).round(),
-      x2: ((c.x + offsetMm.x + geom.regSizeMm / 2) * pxPerMm).round(),
-      y2: ((c.y + offsetMm.y + geom.regSizeMm / 2) * pxPerMm).round(),
-      color: black,
-    );
-  }
-
-  for (var row = 0; row < rows; row++) {
-    for (var col = 0; col < optionsPerQuestion; col++) {
-      final c = geom.bubbleCenterMm(row, col, optionsPerQuestion);
-      final cx = ((c.x + offsetMm.x) * pxPerMm).round();
-      final cy = ((c.y + offsetMm.y) * pxPerMm).round();
-      img.drawCircle(
-        image,
-        x: cx,
-        y: cy,
-        radius: (geom.bubbleRadiusMm * pxPerMm).round(),
-        color: black,
-      );
-      if (filledByRow[row]?.contains(col) ?? false) {
-        final radiusMm = fillRadiusMmByRow[row] ?? geom.bubbleRadiusMm;
-        img.fillCircle(
-          image,
-          x: cx,
-          y: cy,
-          radius: (radiusMm * pxPerMm).round(),
-          color: black,
-        );
-      }
-    }
-  }
-  return image;
-}
+import 'sheet_builder.dart';
 
 void main() {
   Map<int, List<int>> cleanMarks(int rows) => {
@@ -152,6 +94,109 @@ void main() {
     final result = detectMarks(sheet, rows: 30, optionsPerQuestion: 4);
     expect(result.needsReview, isFalse);
     expect(result.marks, [for (var r = 0; r < 30; r++) r % 4]);
+  });
+
+  test('pre-grayscale single-channel input works', () {
+    final sheet = buildSheetImage(
+      rows: 5,
+      optionsPerQuestion: 4,
+      numChannels: 1,
+      filledByRow: cleanMarks(5),
+    );
+    expect(sheet.numChannels, 1);
+    final result = detectMarks(sheet, rows: 5, optionsPerQuestion: 4);
+    expect(result.marks, [0, 1, 2, 3, 0]);
+  });
+
+  test('marksForGrading throws while any row needs review', () {
+    final marks = cleanMarks(10)..[5] = [1, 2];
+    final sheet = buildSheetImage(
+      rows: 10,
+      optionsPerQuestion: 4,
+      filledByRow: marks,
+    );
+    final result = detectMarks(sheet, rows: 10, optionsPerQuestion: 4);
+    expect(
+      () => result.marksForGrading,
+      throwsA(
+        isA<OmrException>().having(
+          (e) => e.message,
+          'message',
+          contains('[6]'),
+        ),
+      ),
+    );
+  });
+
+  test('custom thresholds change the classification boundary', () {
+    // A 0.8mm blob is ambiguous under the defaults (see test above); with a
+    // permissive filledMin it classifies as a confident mark.
+    final sheet = buildSheetImage(
+      rows: 2,
+      optionsPerQuestion: 4,
+      filledByRow: {
+        0: [1],
+        1: [2],
+      },
+      fillRadiusMmByRow: {0: 0.8},
+    );
+    final result = detectMarks(
+      sheet,
+      rows: 2,
+      optionsPerQuestion: 4,
+      config: const OmrConfig(filledMin: 0.20, emptyMax: 0.05),
+    );
+    expect(result.rows[0].status, RowStatus.marked);
+    expect(result.marks[0], 1);
+  });
+
+  test('rows beyond the sheet capacity are rejected', () {
+    final sheet = buildSheetImage(
+      rows: 10,
+      optionsPerQuestion: 4,
+      filledByRow: cleanMarks(10),
+    );
+    expect(
+      () => detectMarks(sheet, rows: 76, optionsPerQuestion: 4),
+      throwsA(
+        isA<OmrException>().having(
+          (e) => e.message,
+          'message',
+          contains('capacity'),
+        ),
+      ),
+    );
+  });
+
+  test('too-low resolution is rejected with a clear message', () {
+    final sheet = buildSheetImage(
+      rows: 2,
+      optionsPerQuestion: 4,
+      pxPerMm: 1,
+      filledByRow: cleanMarks(2),
+    );
+    expect(
+      () => detectMarks(sheet, rows: 2, optionsPerQuestion: 4),
+      throwsA(
+        isA<OmrException>().having(
+          (e) => e.message,
+          'message',
+          contains('resolution'),
+        ),
+      ),
+    );
+  });
+
+  test('inverted image fails safe: flagged for review, never marked', () {
+    final sheet = buildSheetImage(
+      rows: 10,
+      optionsPerQuestion: 4,
+      filledByRow: cleanMarks(10),
+    );
+    img.invert(sheet);
+    final result = detectMarks(sheet, rows: 10, optionsPerQuestion: 4);
+    expect(result.needsReview, isTrue);
+    expect(result.rows.every((r) => r.status != RowStatus.marked), isTrue);
   });
 
   test('missing registration mark raises a corner-naming error', () {

@@ -8,6 +8,7 @@ library;
 
 const double pageWidthMm = 210;
 const double pageHeightMm = 297;
+const double pageMarginMm = 15; // render.py: MARGIN
 
 /// Corner registration squares: inset from both page edges, side length.
 const double regInsetMm = 8;
@@ -27,6 +28,12 @@ const double blockGapMm = 12;
 
 double blockWidthMm(int optionsPerQuestion) =>
     blockLabelWidthMm + optionsPerQuestion * bubblePitchMm + blockGapMm;
+
+/// Maximum grid rows that fit on the page (mirror of render.py max_rows).
+int maxRows(int optionsPerQuestion) {
+  const usable = pageWidthMm - pageMarginMm - gridLeftMm;
+  return (usable / blockWidthMm(optionsPerQuestion)).floor() * rowsPerBlock;
+}
 
 /// Centres of the four corner registration squares, top-left origin, in the
 /// order [topLeft, topRight, bottomLeft, bottomRight].
