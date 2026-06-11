@@ -73,11 +73,19 @@ class HomeScreen extends StatelessWidget {
       );
       if (scanned != true) return;
     }
-    while (session.stage == SessionStage.needSheet) {
-      final captured = await navigator.push<bool>(
-        MaterialPageRoute(builder: (_) => CaptureSheetScreen(session: session)),
-      );
-      if (captured != true) return;
+    // The loop also accepts an entry directly in the result stage: if the
+    // user back-navigated out of the result screen earlier, the session is
+    // still showing that result and tapping "Grade a sheet" returns to it.
+    while (session.stage == SessionStage.needSheet ||
+        session.stage == SessionStage.result) {
+      if (session.stage == SessionStage.needSheet) {
+        final captured = await navigator.push<bool>(
+          MaterialPageRoute(
+            builder: (_) => CaptureSheetScreen(session: session),
+          ),
+        );
+        if (captured != true) return;
+      }
       final action = await navigator.push<String>(
         MaterialPageRoute(builder: (_) => ResultScreen(session: session)),
       );

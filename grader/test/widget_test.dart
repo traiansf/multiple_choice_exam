@@ -90,6 +90,60 @@ void main() {
     expect(find.textContaining('row 2'), findsOneWidget);
   });
 
+  testWidgets('result screen shows blank-row text for unanswered question', (
+    tester,
+  ) async {
+    final session = GraderSession()
+      ..loadKey(keyJson)
+      ..setQr(qrRaw);
+    session.processSheet(
+      sheetWith({
+        0: [3],
+        2: [0],
+        3: [2],
+        4: [3],
+      }), // row 1 left blank
+    );
+    await tester.pumpWidget(MaterialApp(home: ResultScreen(session: session)));
+    expect(find.textContaining('blank — correct:'), findsOneWidget);
+    expect(find.text('4 / 5'), findsOneWidget);
+  });
+
+  testWidgets('retake button returns the session to needSheet', (tester) async {
+    final session = GraderSession()
+      ..loadKey(keyJson)
+      ..setQr(qrRaw);
+    session.processSheet(
+      sheetWith({
+        for (var row = 0; row < 5; row++) row: [correctPositions[row]],
+      }),
+    );
+    await tester.pumpWidget(MaterialApp(home: ResultScreen(session: session)));
+    await tester.tap(find.text('Retake sheet'));
+    expect(session.stage, SessionStage.needSheet);
+    expect(session.qrPayload, isNotNull);
+  });
+
+  testWidgets(
+    'grade-a-sheet recovers a result-stage session after back navigation',
+    (tester) async {
+      final session = GraderSession()
+        ..loadKey(keyJson)
+        ..setQr(qrRaw);
+      session.processSheet(
+        sheetWith({
+          for (var row = 0; row < 5; row++) row: [correctPositions[row]],
+        }),
+      );
+      expect(session.stage, SessionStage.result);
+      await tester.pumpWidget(GraderApp(session: session));
+      await tester.tap(find.text('Grade a sheet'));
+      await tester.pumpAndSettle();
+      // Returns straight to the result screen instead of doing nothing.
+      expect(find.text('5 / 5'), findsOneWidget);
+    },
+  );
+
   testWidgets('result screen buttons drive the session', (tester) async {
     final session = GraderSession()
       ..loadKey(keyJson)

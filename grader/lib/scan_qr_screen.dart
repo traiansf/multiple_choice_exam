@@ -20,6 +20,10 @@ class _ScanQrScreenState extends State<ScanQrScreen> {
   final MobileScannerController _controller = MobileScannerController();
   String? _rejection;
 
+  /// The scanner keeps delivering frames during the pop animation; without
+  /// this guard a second detection of the same QR would pop a second route.
+  bool _accepted = false;
+
   @override
   void dispose() {
     _controller.dispose();
@@ -27,10 +31,13 @@ class _ScanQrScreenState extends State<ScanQrScreen> {
   }
 
   void _onDetect(BarcodeCapture capture) {
+    if (_accepted) return;
     for (final barcode in capture.barcodes) {
       final raw = barcode.rawValue;
       if (raw == null) continue;
       if (widget.session.setQr(raw)) {
+        _accepted = true;
+        _controller.stop();
         Navigator.of(context).pop(true);
         return;
       }

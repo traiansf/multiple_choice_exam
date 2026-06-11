@@ -34,6 +34,34 @@ void main() {
     });
   });
 
+  test('pageGuideRect on a square canvas stays inside with A4 aspect', () {
+    const canvas = Size(500, 500);
+    final guide = pageGuideRect(canvas);
+    expect(
+      guide.width / guide.height,
+      closeTo(geom.pageWidthMm / geom.pageHeightMm, 1e-9),
+    );
+    expect(guide.top, greaterThanOrEqualTo(0));
+    expect(guide.bottom, lessThanOrEqualTo(500));
+  });
+
+  test('cropToGuideFraction clamps a rect extending beyond the photo', () {
+    final photo = img.Image(width: 100, height: 100);
+    img.fill(photo, color: img.ColorRgb8(128, 128, 128));
+    const oversized = Rect.fromLTWH(-0.1, -0.1, 1.4, 1.4);
+    final cropped = cropToGuideFraction(photo, oversized);
+    expect(cropped.width, inInclusiveRange(1, 100));
+    expect(cropped.height, inInclusiveRange(1, 100));
+  });
+
+  test('exposureHint samples even images smaller than the step', () {
+    // The grid loop always samples (0,0), so a tiny image is still judged
+    // (and the samples==0 guard only matters for zero-dimension inputs).
+    final tiny = img.Image(width: 4, height: 4);
+    img.fill(tiny, color: img.ColorRgb8(0, 0, 0));
+    expect(exposureHint(tiny), contains('dark'));
+  });
+
   test('cornerMarkTargets sit at registration-mark relative positions', () {
     final guide = Rect.fromLTWH(100, 50, 210, 297); // 1px per mm
     final targets = cornerMarkTargets(guide);

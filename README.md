@@ -286,8 +286,9 @@ fails CI immediately. Changing the algorithm requires regenerating the vectors
 │   ├── src/mcexam/         # cli, parser, validator, model, rng, select, render, qr, keyfile
 │   └── tests/              # parser/validator/rng/round-trip tests
 ├── grader/                 # Flutter grading app
-│   ├── lib/                # rng, select, qr_scan, omr, sheet_geometry, keyfile, grading, main
-│   └── test/               # rng_test replays the shared vectors
+│   ├── lib/                # core: rng, select, qr_scan, omr, sheet_geometry, keyfile, grading
+│   │                       # app: session, framing, sheet_guide_overlay, scan/capture/result screens, main
+│   └── test/               # vector replay, OMR fixtures, session/framing/widget tests
 ├── shared/
 │   └── test-vectors.json   # cross-language determinism fixture (source of truth)
 ├── examples/

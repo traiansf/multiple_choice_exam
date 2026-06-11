@@ -159,6 +159,30 @@ void main() {
     expect(session.qrPayload, isNotNull);
   });
 
+  test(
+    'invalid key JSON on a fresh session stays in needKey with the error',
+    () {
+      final session = GraderSession();
+      expect(session.loadKey('not json'), isFalse);
+      expect(session.lastError, contains('JSON'));
+      expect(session.answerKey, isNull);
+      expect(session.stage, SessionStage.needKey);
+    },
+  );
+
+  test('setQr before a key is loaded throws a StateError', () {
+    expect(() => GraderSession().setQr(qrRaw), throwsStateError);
+  });
+
+  test('processSheet before key or QR throws a StateError', () {
+    expect(
+      () => GraderSession().processSheet(correctSheet()),
+      throwsStateError,
+    );
+    final keyOnly = GraderSession()..loadKey(keyJson);
+    expect(() => keyOnly.processSheet(correctSheet()), throwsStateError);
+  });
+
   test('notifies listeners on every transition', () {
     final session = GraderSession();
     var notifications = 0;

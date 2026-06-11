@@ -99,6 +99,10 @@ String? exposureHint(img.Image photo, {int step = 8}) {
       samples++;
     }
   }
+  if (samples == 0) {
+    // Image smaller than the sampling grid; let OMR report it as too small.
+    return null;
+  }
   final mean = sum / samples;
   if (mean < 70) {
     return 'The image is too dark — add light or move out of the shadow.';

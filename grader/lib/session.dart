@@ -77,6 +77,9 @@ class GraderSession extends ChangeNotifier {
   /// Mismatches are rejected here, at scan time, so the user learns about a
   /// wrong sheet before photographing it.
   bool setQr(String rawValue) {
+    if (_key == null) {
+      throw StateError('setQr called before an answer key was loaded');
+    }
     final QrPayload decoded;
     try {
       decoded = QrPayload.decode(rawValue);
@@ -115,8 +118,14 @@ class GraderSession extends ChangeNotifier {
   /// or flagged for manual review; false keeps needSheet with [lastError]
   /// holding a retake hint.
   bool processSheet(img.Image pageImage) {
-    final key = _key!;
-    final payload = _payload!;
+    final key = _key;
+    final payload = _payload;
+    if (key == null || payload == null) {
+      throw StateError(
+        'processSheet called before ${key == null ? 'an answer key' : 'a QR'}'
+        ' was loaded',
+      );
+    }
     final exposure = exposureHint(pageImage);
     if (exposure != null) {
       _lastError = exposure;
@@ -153,6 +162,10 @@ class GraderSession extends ChangeNotifier {
         marks: detected.marksForGrading,
       );
     } on grading.GradingException catch (error) {
+      // Defensive backstop only: setQr already rejected fingerprint and
+      // count mismatches, and detectMarks can only produce in-range marks of
+      // the right length, so this is unreachable in the normal flow. Keep it
+      // so a future grade() precondition cannot crash the app.
       _omr = null;
       _lastError = error.message;
       notifyListeners();

@@ -77,6 +77,9 @@ class SheetGuidePainter extends CustomPainter {
     }
   }
 
+  // The painter has no fields: everything derives from the paint() size,
+  // and Flutter repaints on size changes regardless. The hint text lives in
+  // a sibling widget, not in this painter.
   @override
   bool shouldRepaint(covariant SheetGuidePainter oldDelegate) => false;
 }

@@ -16,6 +16,10 @@ class ResultScreen extends StatelessWidget {
     final omr = session.omrResult;
     final grade = session.gradeResult;
     final needsReview = omr?.needsReview ?? false;
+    assert(
+      needsReview || grade != null,
+      'ResultScreen pushed while the session has no result',
+    );
     return Scaffold(
       appBar: AppBar(title: const Text('Result')),
       body: needsReview
