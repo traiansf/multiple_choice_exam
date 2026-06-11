@@ -1,0 +1,7 @@
+click>=8.1
+reportlab>=4.0
+segno>=1.6
+
+[dev]
+pytest>=8
+ruff>=0.5

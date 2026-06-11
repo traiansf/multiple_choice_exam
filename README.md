@@ -102,9 +102,11 @@ Rules (enforced by `mcexam lint`):
 3. **Questions are `###` headings** under a section. The heading text is the
    question prompt.
 4. **Options are GitHub task-list items**: `- [ ]` for a distractor, `- [x]`
-   for the correct answer. **Exactly one `- [x]` per question.**
+   (or `- [X]`) for the correct answer. **Exactly one checked option per
+   question.**
 5. **Uniform option count.** Every question has the *same* number of options
-   `M` (required by the fixed OMR bubble grid). The linter rejects mixed counts.
+   `M`, with `2 ≤ M ≤ 10` (required by the fixed OMR bubble grid, labeled
+   A–J). The linter rejects mixed counts and out-of-range counts.
 
 Because the correct answer is marked inline, a Markdown file is *self-documenting*
 — which is why `scramble` (below) needs no separate key file.

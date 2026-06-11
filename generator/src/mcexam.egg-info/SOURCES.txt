@@ -1,0 +1,9 @@
+pyproject.toml
+src/mcexam/__init__.py
+src/mcexam.egg-info/PKG-INFO
+src/mcexam.egg-info/SOURCES.txt
+src/mcexam.egg-info/dependency_links.txt
+src/mcexam.egg-info/entry_points.txt
+src/mcexam.egg-info/requires.txt
+src/mcexam.egg-info/top_level.txt
+tests/test_package.py
