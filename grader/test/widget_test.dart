@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:grader/main.dart';
+import 'package:grader/records_screen.dart';
 import 'package:grader/result_screen.dart';
 import 'package:grader/session.dart';
 import 'package:image/image.dart' as img;
@@ -207,6 +208,77 @@ void main() {
     expect(find.byType(Image), findsNothing);
     expect(find.text('Next sheet'), findsOneWidget);
     expect(find.text('Confirm — next sheet'), findsNothing);
+  });
+
+  testWidgets('home shows the recorded count and gates the records button', (
+    tester,
+  ) async {
+    final session = GraderSession()..loadKey(keyJson);
+    await tester.pumpWidget(GraderApp(session: session));
+    expect(find.text('0 sheets recorded'), findsOneWidget);
+    final disabled = tester.widget<OutlinedButton>(
+      find.widgetWithText(OutlinedButton, 'Recorded grades'),
+    );
+    expect(disabled.onPressed, isNull);
+
+    session.setQr(qrRaw);
+    session.processSheet(
+      sheetWith({
+        for (var row = 0; row < 5; row++) row: [correctPositions[row]],
+      }),
+    );
+    session.confirmResult();
+    session.nextSheet();
+    await tester.pump();
+    expect(find.text('1 sheet recorded'), findsOneWidget);
+    final enabled = tester.widget<OutlinedButton>(
+      find.widgetWithText(OutlinedButton, 'Recorded grades'),
+    );
+    expect(enabled.onPressed, isNotNull);
+  });
+
+  testWidgets('records screen lists the recorded grades', (tester) async {
+    final session = GraderSession()
+      ..loadKey(keyJson)
+      ..setQr(qrRaw);
+    session.processSheet(
+      sheetWith({
+        0: [3],
+        1: [1],
+        2: [0],
+        3: [2],
+        4: [0], // wrong: 4/5
+      }),
+    );
+    session.confirmResult();
+    await tester.pumpWidget(MaterialApp(home: RecordsScreen(session: session)));
+    expect(find.text('Variant 001'), findsOneWidget);
+    expect(find.textContaining('4 / 5'), findsOneWidget);
+    expect(find.textContaining('80.0%'), findsOneWidget);
+    expect(find.text('Export report (CSV)'), findsOneWidget);
+  });
+
+  testWidgets('replace-key dialog warns about discarding recorded grades', (
+    tester,
+  ) async {
+    final session = GraderSession()
+      ..loadKey(keyJson)
+      ..setQr(qrRaw);
+    session.processSheet(
+      sheetWith({
+        for (var row = 0; row < 5; row++) row: [correctPositions[row]],
+      }),
+    );
+    session.confirmResult();
+    session.nextSheet();
+    await tester.pumpWidget(GraderApp(session: session));
+    await tester.tap(find.text('Load a different key'));
+    await tester.pumpAndSettle();
+    expect(find.textContaining('1 recorded grade'), findsOneWidget);
+    expect(find.textContaining('Export the report first'), findsOneWidget);
+    await tester.tap(find.text('Cancel')); // never reaches the file picker
+    await tester.pumpAndSettle();
+    expect(session.gradeBook.length, 1);
   });
 
   testWidgets('double-tapping Confirm during the pop animation is harmless', (
