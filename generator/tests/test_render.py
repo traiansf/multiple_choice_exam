@@ -70,10 +70,10 @@ def test_registration_marks_bound_the_answer_area() -> None:
 
 
 def test_registration_marks_clear_the_sheet_content() -> None:
-    """The top mark band must sit between the header content (name line at
-    48mm from top, QR bottom at 50mm) and the column letters (baseline 64mm
-    from top, 9pt); the bottom band must sit below the lowest possible
-    bubble. All in PDF bottom-left coordinates here."""
+    """The top mark band must sit between the header content (the name line
+    and the QR, which ends above the band) and the column letters; the bottom
+    band must sit below the lowest possible bubble. All in PDF bottom-left
+    coordinates here."""
     positions = registration_mark_positions()
     top_band_low = min(y for _, y in positions if y > PAGE_H / 2)
     bottom_band_high = max(y + REG_SIZE for _, y in positions if y < PAGE_H / 2)
@@ -81,10 +81,12 @@ def test_registration_marks_clear_the_sheet_content() -> None:
     letters_ascender_top = GRID_TOP + 6 * mm + 9  # baseline + 9pt ascent bound
     assert top_band_low > letters_ascender_top
     name_descender_bottom = PAGE_H - NAME_LINE_TOP - 3  # baseline - 12pt descent bound
-    qr_bottom = PAGE_H - QR_TOP - QR_SIZE
     top_band_high = top_band_low + REG_SIZE
     assert top_band_high < name_descender_bottom
-    assert top_band_high < qr_bottom
+    # The QR must end above the capture band: QR ink inside the band would
+    # appear in every graded photo and intrude into the OMR's top-right
+    # mark-search window.
+    assert CAPTURE_TOP_MM * mm >= QR_TOP + QR_SIZE
     lowest_bubble_bottom = GRID_TOP - (ROWS_PER_BLOCK - 1) * ROW_HEIGHT - BUBBLE_RADIUS
     assert bottom_band_high < lowest_bubble_bottom
 
