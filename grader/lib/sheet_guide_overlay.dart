@@ -51,7 +51,7 @@ class SheetGuidePainter extends CustomPainter {
   void paint(Canvas canvas, Size size) {
     final guide = pageGuideRect(size);
 
-    // Dim everything outside the page frame.
+    // Dim everything outside the answer-area frame.
     final outside = Path()
       ..addRect(Offset.zero & size)
       ..addRect(guide)
@@ -61,7 +61,7 @@ class SheetGuidePainter extends CustomPainter {
       Paint()..color = Colors.black.withValues(alpha: 0.55),
     );
 
-    // Page frame.
+    // Answer-area frame.
     final border = Paint()
       ..style = PaintingStyle.stroke
       ..strokeWidth = 2
