@@ -1,13 +1,13 @@
-/// OMR detection: locate the four registration marks in a page image, map
-/// the printed bubble grid onto it, sample each bubble's fill, and classify
-/// every row. Ambiguous or multi-marked rows are flagged for manual review,
-/// never guessed.
+/// OMR detection: locate the four registration marks in a capture-band image,
+/// map the printed bubble grid onto it, sample each bubble's fill, and
+/// classify every row. Ambiguous or multi-marked rows are flagged for manual
+/// review, never guessed.
 ///
-/// Assumes the input image is the answer-sheet page, roughly axis-aligned
-/// and cropped to the page bounds — a flatbed scan or an already-deskewed
-/// photo. The bilinear mapping over the detected registration quad absorbs
-/// translation, scale, and mild skew; strong perspective correction is the
-/// camera pipeline's job (later milestone).
+/// Assumes the input image frames the capture band — the answer area bounded
+/// by the registration marks (full page width, the vertical band around the
+/// bubble grid) — roughly axis-aligned. The bilinear mapping over the detected
+/// registration quad absorbs translation, scale, and mild skew; strong
+/// perspective correction is the camera pipeline's job (later milestone).
 library;
 
 import 'package:image/image.dart' as img;
@@ -198,9 +198,11 @@ OmrRow _classifyRow(List<double> ratios, OmrConfig config) {
 
 List<_Point> _findRegistrationMarks(img.Image gray, OmrConfig config) {
   const cornerNames = ['top-left', 'top-right', 'bottom-left', 'bottom-right'];
-  final centers = geom.registrationMarkCentersMm();
-  final scaleX = gray.width / geom.pageWidthMm;
-  final scaleY = gray.height / geom.pageHeightMm;
+  // The input image is assumed to (roughly) frame the capture band — the
+  // answer area bounded by the marks — not the whole page.
+  final centers = geom.registrationMarkCentersInCaptureMm();
+  final scaleX = gray.width / geom.captureWidthMm;
+  final scaleY = gray.height / geom.captureHeightMm;
   final halfW = (gray.width * config.cornerWindowFraction).round();
   final halfH = (gray.height * config.cornerWindowFraction).round();
 

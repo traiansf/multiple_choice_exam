@@ -1,8 +1,9 @@
 import 'package:grader/sheet_geometry.dart' as geom;
 import 'package:image/image.dart' as img;
 
-/// Draws a synthetic answer-sheet page: white canvas, black registration
-/// squares, bubble outlines, and filled discs for the requested marks.
+/// Draws a synthetic capture-frame image (the band a correctly framed photo
+/// covers): white canvas, black registration squares, bubble outlines, and
+/// filled discs for the requested marks.
 img.Image buildSheetImage({
   required int rows,
   required int optionsPerQuestion,
@@ -14,14 +15,14 @@ img.Image buildSheetImage({
   bool omitTopLeftMark = false,
 }) {
   final image = img.Image(
-    width: (geom.pageWidthMm * pxPerMm).round(),
-    height: (geom.pageHeightMm * pxPerMm).round(),
+    width: (geom.captureWidthMm * pxPerMm).round(),
+    height: (geom.captureHeightMm * pxPerMm).round(),
     numChannels: numChannels,
   );
   img.fill(image, color: img.ColorRgb8(255, 255, 255));
   final black = img.ColorRgb8(0, 0, 0);
 
-  final markCenters = geom.registrationMarkCentersMm();
+  final markCenters = geom.registrationMarkCentersInCaptureMm();
   for (var i = 0; i < 4; i++) {
     if (i == 0 && omitTopLeftMark) continue;
     final c = markCenters[i];
@@ -39,7 +40,7 @@ img.Image buildSheetImage({
     for (var col = 0; col < optionsPerQuestion; col++) {
       final c = geom.bubbleCenterMm(row, col, optionsPerQuestion);
       final cx = ((c.x + offsetMm.x) * pxPerMm).round();
-      final cy = ((c.y + offsetMm.y) * pxPerMm).round();
+      final cy = ((c.y - geom.captureTopMm + offsetMm.y) * pxPerMm).round();
       img.drawCircle(
         image,
         x: cx,
