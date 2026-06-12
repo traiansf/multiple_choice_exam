@@ -52,7 +52,10 @@ BLOCK_GAP = 12 * mm
 
 # Answer-sheet header geometry (all in PDF points from page top).
 NAME_LINE_TOP = 48 * mm  # baseline of the "Name: ___" line
-QR_TOP = 22 * mm  # distance from page top to top of answer-sheet QR
+QR_TOP = 16 * mm  # distance from page top to top of answer-sheet QR
+# QR spans page-y 16..44 mm, fully above the capture band (top at 45 mm),
+# so QR ink stays out of the graded photo and out of the OMR's top-right
+# mark-search window (page-y 47.5..64.5 mm).
 QR_SIZE = 28 * mm  # side length of the answer-sheet QR image
 
 OPTION_LETTERS = "ABCDEFGHIJ"
