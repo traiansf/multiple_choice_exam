@@ -271,8 +271,8 @@ class _LabeledSheet extends StatelessWidget {
       children: [
         Text(label, style: Theme.of(context).textTheme.labelLarge),
         const SizedBox(height: 4),
-        // Both images are full-page renders with the same A4 aspect, so
-        // equal-width columns show them scaled to match.
+        // Both images are capture-band renders with the same aspect (~210×212mm);
+        // equal-width columns show them at matching scale.
         Expanded(child: Image.memory(png, fit: BoxFit.contain)),
       ],
     );
