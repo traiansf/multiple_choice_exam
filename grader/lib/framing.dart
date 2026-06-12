@@ -122,8 +122,9 @@ const String defaultFramingHint =
     ' in the frame and put each black square in its bracket.';
 
 /// The capture band expressed as a fraction of a full-page image — for
-/// cropping a whole-page raster (fixture, flatbed scan) the way the camera
-/// guide crop frames a photo.
+/// cropping a whole-page raster (fixture, flatbed scan) to the capture band.
+/// The live camera does NOT use this: it derives the crop fraction from the
+/// on-screen guide rectangle position instead.
 Rect captureFractionOfPage() => Rect.fromLTWH(
   0,
   geom.captureTopMm / geom.pageHeightMm,

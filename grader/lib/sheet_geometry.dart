@@ -19,7 +19,7 @@ const double pageMarginMm = 15; // render.py: MARGIN
 /// Registration squares: inset from the *capture frame* edges, side length.
 /// The capture frame is the region a sheet photo must cover: the full page
 /// width, but only the vertical band around the bubble grid (render.py:
-/// CAPTURE_TOP / CAPTURE_HEIGHT).
+/// CAPTURE_TOP_MM / CAPTURE_HEIGHT_MM).
 const double regInsetMm = 8;
 const double regSizeMm = 6;
 const double captureTopMm = 45;

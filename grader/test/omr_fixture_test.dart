@@ -20,8 +20,9 @@ import 'package:image/image.dart' as img;
 ///
 /// Note: [detectMarks] expects the capture band, not the full page. All tests
 /// that call [detectMarks] first crop with [cropToGuideFraction] +
-/// [captureFractionOfPage] — exercising the same production path the camera
-/// screen uses.
+/// [captureFractionOfPage]. The crop helper is shared with flatbed/fixture
+/// use; it is not the camera-guide path (the live camera derives its crop
+/// fraction from the on-screen guide position, not from [captureFractionOfPage]).
 
 void main() {
   test('detects marks stamped onto the real rendered sheet', () {

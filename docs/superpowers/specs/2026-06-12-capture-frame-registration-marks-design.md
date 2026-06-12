@@ -45,7 +45,7 @@ edges:
 Printed-sheet clearances (top-left-origin mm, from current `render.py`
 content):
 
-- Top mark band spans 53–59 mm: ~3.5 mm below the name-line baseline (48 mm;
+- Top mark band spans 53–59 mm: ~5 mm below the name-line baseline (48 mm;
   the name line sits at the band's top edge, so descenders may appear at the
   very top of the photo); QR fully above the band (page-y 16..44 mm, ends 1 mm
   above the band top); ~2.8 mm above the column-letter ascenders (≈62 mm,
@@ -62,11 +62,12 @@ the clearances suffice.
 `registration_mark_positions()` returns the new positions. In PDF
 bottom-left coordinates the mark centers sit at y = 241 mm (top pair) and
 y = 51 mm (bottom pair); x insets are unchanged. Express the positions via
-named capture-frame constants (`CAPTURE_TOP`, `CAPTURE_HEIGHT`) so the
+named capture-frame constants (`CAPTURE_TOP_MM`, `CAPTURE_HEIGHT_MM`) so the
 Python and Dart constants mirror each other 1:1.
 
-Nothing else on the answer sheet moves. Question pages carry no marks and
-are unaffected.
+The QR was also moved (from page-y 22 mm to 16 mm) so it ends fully above
+the capture band. Everything else on the answer sheet is unchanged. Question
+pages carry no marks and are unaffected.
 
 ### 3. Grader
 

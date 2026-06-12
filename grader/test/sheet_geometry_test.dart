@@ -17,7 +17,7 @@ void main() {
     ]);
   });
 
-  test('capture frame matches render.py CAPTURE_TOP/CAPTURE_HEIGHT', () {
+  test('capture frame matches render.py CAPTURE_TOP_MM/CAPTURE_HEIGHT_MM', () {
     expect(geom.captureWidthMm, 210.0);
     expect(geom.captureWidthMm, geom.pageWidthMm);
     expect(geom.captureTopMm, 45.0);
