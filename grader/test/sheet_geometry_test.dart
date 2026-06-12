@@ -8,6 +8,7 @@ void main() {
   // geometry contract have drifted.
 
   test('registration mark centers bound the answer area', () {
+    // order: TL, TR, BL, BR — must match registrationMarkCentersMm() doc
     expect(geom.registrationMarkCentersMm(), [
       (x: 11.0, y: 56.0),
       (x: 199.0, y: 56.0),
@@ -18,6 +19,7 @@ void main() {
 
   test('capture frame matches render.py CAPTURE_TOP/CAPTURE_HEIGHT', () {
     expect(geom.captureWidthMm, 210.0);
+    expect(geom.captureWidthMm, geom.pageWidthMm);
     expect(geom.captureTopMm, 45.0);
     expect(geom.captureHeightMm, 212.0);
     // Relative to the capture frame the marks keep the legacy 11mm inset.
