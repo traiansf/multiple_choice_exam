@@ -29,7 +29,7 @@ void main() {
   });
 
   bool stripHasRed(img.Image sheet, int row, int optionsPerQuestion) {
-    final pxPerMm = sheet.width / geom.pageWidthMm;
+    final pxPerMm = sheet.width / geom.captureWidthMm;
     final first = geom.bubbleCenterMm(row, 0, optionsPerQuestion);
     final last = geom.bubbleCenterMm(
       row,
