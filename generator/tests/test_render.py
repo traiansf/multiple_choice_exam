@@ -6,8 +6,11 @@ from mcexam.render import (
     GRID_LEFT,
     GRID_TOP,
     MARGIN,
+    NAME_LINE_TOP,
     PAGE_H,
     PAGE_W,
+    QR_SIZE,
+    QR_TOP,
     REG_SIZE,
     ROW_HEIGHT,
     ROWS_PER_BLOCK,
@@ -74,8 +77,8 @@ def test_registration_marks_clear_the_sheet_content() -> None:
 
     letters_ascender_top = GRID_TOP + 6 * mm + 9  # baseline + 9pt ascent bound
     assert top_band_low > letters_ascender_top
-    name_descender_bottom = PAGE_H - 48 * mm - 3  # baseline - 12pt descent bound
-    qr_bottom = PAGE_H - 22 * mm - 28 * mm
+    name_descender_bottom = PAGE_H - NAME_LINE_TOP - 3  # baseline - 12pt descent bound
+    qr_bottom = PAGE_H - QR_TOP - QR_SIZE
     top_band_high = top_band_low + REG_SIZE
     assert top_band_high < name_descender_bottom
     assert top_band_high < qr_bottom

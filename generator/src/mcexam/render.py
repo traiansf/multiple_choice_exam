@@ -31,6 +31,9 @@ _CAPTURE_TOP_MM = 45  # capture-frame top, measured from the page top (mm)
 _CAPTURE_HEIGHT_MM = 212  # capture-frame height (mm)
 _REG_INSET_MM = 8  # inset from capture-frame edges (mm)
 _REG_SIZE_MM = 6  # mark square side length (mm)
+# Internal arithmetic uses the exact whole-mm ints above; these point-valued
+# constants are the public, grader-facing contract surface (mirrored by
+# grader/lib/sheet_geometry.dart) and have no in-module consumer.
 CAPTURE_TOP = _CAPTURE_TOP_MM * mm
 CAPTURE_HEIGHT = _CAPTURE_HEIGHT_MM * mm
 REG_INSET = _REG_INSET_MM * mm
@@ -46,6 +49,11 @@ BUBBLE_PITCH = 8 * mm
 ROWS_PER_BLOCK = 25
 BLOCK_LABEL_WIDTH = 10 * mm
 BLOCK_GAP = 12 * mm
+
+# Answer-sheet header geometry (all in PDF points from page top).
+NAME_LINE_TOP = 48 * mm  # baseline of the "Name: ___" line
+QR_TOP = 22 * mm  # distance from page top to top of answer-sheet QR
+QR_SIZE = 28 * mm  # side length of the answer-sheet QR image
 
 OPTION_LETTERS = "ABCDEFGHIJ"
 
@@ -155,17 +163,16 @@ def _draw_answer_sheet(
 ) -> None:
     for x, y in registration_mark_positions():
         canvas.rect(x, y, REG_SIZE, REG_SIZE, stroke=0, fill=1)
-    qr_size = 28 * mm
     canvas.drawImage(
         ImageReader(io.BytesIO(qr_png_bytes)),
-        PAGE_W - MARGIN - qr_size,
-        PAGE_H - 22 * mm - qr_size,
-        qr_size,
-        qr_size,
+        PAGE_W - MARGIN - QR_SIZE,
+        PAGE_H - QR_TOP - QR_SIZE,
+        QR_SIZE,
+        QR_SIZE,
     )
     # Keep the title clear of the QR region: wrap into the space left of it,
     # at most two lines, ellipsize the rest.
-    title_width = PAGE_W - 2 * MARGIN - qr_size - 6 * mm
+    title_width = PAGE_W - 2 * MARGIN - QR_SIZE - 6 * mm
     canvas.setFont(font, 16)
     y_title = PAGE_H - 25 * mm
     for line in title_lines(title, font, 16, title_width):
@@ -173,7 +180,7 @@ def _draw_answer_sheet(
         y_title -= 7 * mm
     canvas.setFont(font, 12)
     canvas.drawString(MARGIN, y_title - 1 * mm, f"Variant {variant_id:03d}")
-    canvas.drawString(MARGIN, PAGE_H - 48 * mm, "Name: " + "_" * 40)
+    canvas.drawString(MARGIN, PAGE_H - NAME_LINE_TOP, "Name: " + "_" * 40)
 
     canvas.setFont(font, 9)
     blocks = (rows + ROWS_PER_BLOCK - 1) // ROWS_PER_BLOCK
