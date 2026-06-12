@@ -10,7 +10,7 @@ void main() {
       const MaterialApp(home: Scaffold(body: SheetGuideOverlay())),
     );
     expect(tester.takeException(), isNull);
-    expect(find.textContaining('corner square'), findsOneWidget);
+    expect(find.textContaining('black square'), findsOneWidget);
   });
 
   testWidgets('overlay shows a custom hint instead', (tester) async {
@@ -20,6 +20,6 @@ void main() {
       ),
     );
     expect(find.text('Move closer.'), findsOneWidget);
-    expect(find.textContaining('corner square'), findsNothing);
+    expect(find.textContaining('black square'), findsNothing);
   });
 }

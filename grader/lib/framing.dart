@@ -1,7 +1,7 @@
-/// Camera-framing helpers for capturing the answer sheet: the on-screen A4
-/// guide rectangle, corner-mark targets, crop-to-guide preprocessing, an
-/// exposure gate, and actionable hints when detection fails. Pure logic —
-/// no camera plumbing — so everything here is unit-testable.
+/// Camera-framing helpers for capturing the answer sheet: the on-screen
+/// answer-area guide rectangle, corner-mark targets, crop-to-guide
+/// preprocessing, an exposure gate, and actionable hints when detection fails.
+/// Pure logic — no camera plumbing — so everything here is unit-testable.
 library;
 
 import 'dart:ui';
@@ -11,13 +11,14 @@ import 'package:image/image.dart' as img;
 import 'omr.dart';
 import 'sheet_geometry.dart' as geom;
 
-/// Largest A4-portrait rectangle centred in [canvas], inset by
-/// [marginFraction] of the shortest canvas side.
+/// Largest capture-frame-aspect rectangle centred in [canvas], inset by
+/// [marginFraction] of the shortest canvas side. The capture frame is the
+/// answer area bounded by the printed marks — the photo target.
 Rect pageGuideRect(Size canvas, {double marginFraction = 0.05}) {
   final margin = canvas.shortestSide * marginFraction;
   final availableW = canvas.width - 2 * margin;
   final availableH = canvas.height - 2 * margin;
-  const aspect = geom.pageWidthMm / geom.pageHeightMm;
+  const aspect = geom.captureWidthMm / geom.captureHeightMm;
   var width = availableW;
   var height = width / aspect;
   if (height > availableH) {
@@ -36,10 +37,10 @@ Rect pageGuideRect(Size canvas, {double marginFraction = 0.05}) {
 /// (same order as sheet_geometry: TL, TR, BL, BR). Each target square is
 /// twice the printed mark size, giving the user alignment tolerance.
 List<Rect> cornerMarkTargets(Rect guide) {
-  final scaleX = guide.width / geom.pageWidthMm;
-  final scaleY = guide.height / geom.pageHeightMm;
+  final scaleX = guide.width / geom.captureWidthMm;
+  final scaleY = guide.height / geom.captureHeightMm;
   return [
-    for (final c in geom.registrationMarkCentersMm())
+    for (final c in geom.registrationMarkCentersInCaptureMm())
       Rect.fromCenter(
         center: Offset(guide.left + c.x * scaleX, guide.top + c.y * scaleY),
         width: 2 * geom.regSizeMm * scaleX,
@@ -58,9 +59,9 @@ Rect guideAsFraction(Rect guide, Size canvasSize) => Rect.fromLTWH(
   guide.height / canvasSize.height,
 );
 
-/// Crops [photo] to the page area indicated by the on-screen guide,
+/// Crops [photo] to the capture-frame area indicated by the on-screen guide,
 /// expressed as fractions of the photo dimensions. This restores the OMR
-/// assumption that the image is (roughly) the page.
+/// assumption that the image is (roughly) the capture frame.
 img.Image cropToGuideFraction(img.Image photo, Rect guideFraction) {
   final x = (guideFraction.left * photo.width).round().clamp(
     0,
@@ -113,6 +114,24 @@ String? exposureHint(img.Image photo, {int step = 8}) {
   return null;
 }
 
+/// Default hint shown by the overlay when there is no framing error.
+/// Kept here so it lives alongside [framingHintFor] and copy changes stay in
+/// one place.
+const String defaultFramingHint =
+    'Hold the phone flat above the sheet. Fit the answer area'
+    ' in the frame and put each black square in its bracket.';
+
+/// The capture band expressed as a fraction of a full-page image — for
+/// cropping a whole-page raster (fixture, flatbed scan) to the capture band.
+/// The live camera does NOT use this: it derives the crop fraction from the
+/// on-screen guide rectangle position instead.
+Rect captureFractionOfPage() => Rect.fromLTWH(
+  0,
+  geom.captureTopMm / geom.pageHeightMm,
+  1,
+  geom.captureHeightMm / geom.pageHeightMm,
+);
+
 /// Translates a detection failure into actionable framing guidance.
 String framingHintFor(Object error) {
   if (error is OmrException) {
@@ -122,7 +141,7 @@ String framingHintFor(Object error) {
         'top-left|top-right|bottom-left|bottom-right',
       ).firstMatch(text)?.group(0);
       return 'The ${corner ?? 'corner'} alignment square was not found.'
-          ' Fit the whole sheet inside the frame, with each black corner'
+          ' Fit the answer area inside the frame, with each black'
           ' square inside its bracket.';
     }
     if (text.contains('resolution too low')) {

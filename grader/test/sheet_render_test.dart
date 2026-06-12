@@ -17,20 +17,21 @@ void main() {
     expect(result.marks, correctPositions);
   });
 
-  test('reference sheet has A4 aspect at the requested resolution', () {
+  test('reference sheet has capture-frame aspect at the requested resolution',
+      () {
     final sheet = renderReferenceSheet(
       correctPositions: correctPositions,
       optionsPerQuestion: 4,
       pxPerMm: 3,
     );
-    expect(sheet.width, (geom.pageWidthMm * 3).round());
-    expect(sheet.height, (geom.pageHeightMm * 3).round());
+    expect(sheet.width, (geom.captureWidthMm * 3).round());
+    expect(sheet.height, (geom.captureHeightMm * 3).round());
   });
 
   bool stripHasRed(img.Image sheet, int row, int optionsPerQuestion) {
-    final pxPerMm = sheet.width / geom.pageWidthMm;
-    final first = geom.bubbleCenterMm(row, 0, optionsPerQuestion);
-    final last = geom.bubbleCenterMm(
+    final pxPerMm = sheet.width / geom.captureWidthMm;
+    final first = geom.bubbleCenterInCaptureMm(row, 0, optionsPerQuestion);
+    final last = geom.bubbleCenterInCaptureMm(
       row,
       optionsPerQuestion - 1,
       optionsPerQuestion,

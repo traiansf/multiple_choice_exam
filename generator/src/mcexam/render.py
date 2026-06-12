@@ -22,9 +22,23 @@ from .select import VariantPlan
 PAGE_W, PAGE_H = A4
 MARGIN = 15 * mm
 
-# Registration marks: filled squares at the four page corners.
-REG_INSET = 8 * mm
-REG_SIZE = 6 * mm
+# Registration marks bound the *capture frame*: the region a sheet photo
+# must cover — the full page width, but only the vertical band around the
+# bubble grid. Marks are inset REG_INSET from the capture-frame edges,
+# mirroring grader/lib/sheet_geometry.dart (captureTopMm/captureHeightMm).
+#
+# Whole-mm ints keep position arithmetic exact (byte-reproducible PDFs).
+# CAPTURE_TOP_MM / CAPTURE_HEIGHT_MM are the grader-facing contract values
+# mirrored by grader/lib/sheet_geometry.dart as captureTopMm/captureHeightMm.
+# REG_INSET and REG_SIZE are point-valued and used in registration_mark_positions
+# and _draw_answer_sheet.
+_PAGE_H_MM = 297  # A4 page height in whole mm; kept as int for exact arithmetic
+CAPTURE_TOP_MM = 45  # capture-frame top, measured from the page top (mm)
+CAPTURE_HEIGHT_MM = 212  # capture-frame height (mm)
+_REG_INSET_MM = 8  # inset from capture-frame edges (mm)
+_REG_SIZE_MM = 6  # mark square side length (mm)
+REG_INSET = _REG_INSET_MM * mm
+REG_SIZE = _REG_SIZE_MM * mm
 
 # Bubble grid: rows run top-down in vertical blocks of ROWS_PER_BLOCK,
 # blocks stack left-to-right.
@@ -36,6 +50,14 @@ BUBBLE_PITCH = 8 * mm
 ROWS_PER_BLOCK = 25
 BLOCK_LABEL_WIDTH = 10 * mm
 BLOCK_GAP = 12 * mm
+
+# Answer-sheet header geometry (all in PDF points from page top).
+NAME_LINE_TOP = 48 * mm  # baseline of the "Name: ___" line
+QR_TOP = 16 * mm  # distance from page top to top of answer-sheet QR
+# QR spans page-y 16..44 mm, fully above the capture band (top at 45 mm),
+# so QR ink stays out of the graded photo and out of the OMR's top-right
+# mark-search window (page-y 47.5..64.5 mm).
+QR_SIZE = 28 * mm  # side length of the answer-sheet QR image
 
 OPTION_LETTERS = "ABCDEFGHIJ"
 
@@ -68,12 +90,16 @@ def bubble_center(row: int, col: int, options_per_question: int) -> tuple[float,
 
 
 def registration_mark_positions() -> list[tuple[float, float]]:
-    """Lower-left corners of the four corner squares."""
+    """Lower-left corners of the four marks bounding the answer area."""
+    # Integer mm arithmetic first, then a single multiply by mm, to avoid
+    # floating-point accumulation from chaining n*mm subtraction operations.
+    top_y = (_PAGE_H_MM - CAPTURE_TOP_MM - _REG_INSET_MM - _REG_SIZE_MM) * mm
+    bottom_y = (_PAGE_H_MM - CAPTURE_TOP_MM - CAPTURE_HEIGHT_MM + _REG_INSET_MM) * mm
     return [
-        (REG_INSET, PAGE_H - REG_INSET - REG_SIZE),
-        (PAGE_W - REG_INSET - REG_SIZE, PAGE_H - REG_INSET - REG_SIZE),
-        (REG_INSET, REG_INSET),
-        (PAGE_W - REG_INSET - REG_SIZE, REG_INSET),
+        (REG_INSET, top_y),
+        (PAGE_W - REG_INSET - REG_SIZE, top_y),
+        (REG_INSET, bottom_y),
+        (PAGE_W - REG_INSET - REG_SIZE, bottom_y),
     ]
 
 
@@ -141,17 +167,16 @@ def _draw_answer_sheet(
 ) -> None:
     for x, y in registration_mark_positions():
         canvas.rect(x, y, REG_SIZE, REG_SIZE, stroke=0, fill=1)
-    qr_size = 28 * mm
     canvas.drawImage(
         ImageReader(io.BytesIO(qr_png_bytes)),
-        PAGE_W - MARGIN - qr_size,
-        PAGE_H - 22 * mm - qr_size,
-        qr_size,
-        qr_size,
+        PAGE_W - MARGIN - QR_SIZE,
+        PAGE_H - QR_TOP - QR_SIZE,
+        QR_SIZE,
+        QR_SIZE,
     )
     # Keep the title clear of the QR region: wrap into the space left of it,
     # at most two lines, ellipsize the rest.
-    title_width = PAGE_W - 2 * MARGIN - qr_size - 6 * mm
+    title_width = PAGE_W - 2 * MARGIN - QR_SIZE - 6 * mm
     canvas.setFont(font, 16)
     y_title = PAGE_H - 25 * mm
     for line in title_lines(title, font, 16, title_width):
@@ -159,7 +184,7 @@ def _draw_answer_sheet(
         y_title -= 7 * mm
     canvas.setFont(font, 12)
     canvas.drawString(MARGIN, y_title - 1 * mm, f"Variant {variant_id:03d}")
-    canvas.drawString(MARGIN, PAGE_H - 48 * mm, "Name: " + "_" * 40)
+    canvas.drawString(MARGIN, PAGE_H - NAME_LINE_TOP, "Name: " + "_" * 40)
 
     canvas.setFont(font, 9)
     blocks = (rows + ROWS_PER_BLOCK - 1) // ROWS_PER_BLOCK

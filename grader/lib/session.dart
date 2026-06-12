@@ -183,11 +183,11 @@ class GraderSession extends ChangeNotifier {
     return true;
   }
 
-  /// Processes a captured sheet image (already cropped to the page guide).
-  /// Returns true when the session reached the result stage — either graded
-  /// or flagged for manual review; false keeps needSheet with [lastError]
-  /// holding a retake hint.
-  bool processSheet(img.Image pageImage) {
+  /// Processes a captured sheet image (already cropped to the capture-frame
+  /// guide). Returns true when the session reached the result stage — either
+  /// graded or flagged for manual review; false keeps needSheet with
+  /// [lastError] holding a retake hint.
+  bool processSheet(img.Image captureImage) {
     final key = _key;
     final payload = _payload;
     if (key == null || payload == null) {
@@ -196,7 +196,7 @@ class GraderSession extends ChangeNotifier {
         ' was loaded',
       );
     }
-    final exposure = exposureHint(pageImage);
+    final exposure = exposureHint(captureImage);
     if (exposure != null) {
       _lastError = exposure;
       notifyListeners();
@@ -209,7 +209,7 @@ class GraderSession extends ChangeNotifier {
     final OmrResult detected;
     try {
       detected = detectMarks(
-        pageImage,
+        captureImage,
         rows: totalRows,
         optionsPerQuestion: key.optionsPerQuestion,
       );
@@ -225,7 +225,7 @@ class GraderSession extends ChangeNotifier {
       // flagged rows outlined so the grader can see what the camera saw
       // while grading by hand on the review screen.
       _referencePng = null;
-      _scannedPng = _encodeScan(pageImage, [
+      _scannedPng = _encodeScan(captureImage, [
         for (final row in detected.reviewRows) row - 1,
       ], key.optionsPerQuestion);
       _lastError = null;
@@ -248,16 +248,16 @@ class GraderSession extends ChangeNotifier {
       notifyListeners();
       return false;
     }
-    _buildComparison(pageImage, key.optionsPerQuestion);
+    _buildComparison(captureImage, key.optionsPerQuestion);
     _lastError = null;
     notifyListeners();
     return true;
   }
 
   /// Builds the side-by-side confirmation images: the generated reference
-  /// sheet (correct answers filled) and the scanned page, both with the
+  /// sheet (correct answers filled) and the scanned capture, both with the
   /// wrongly-answered rows outlined in red.
-  void _buildComparison(img.Image pageImage, int optionsPerQuestion) {
+  void _buildComparison(img.Image captureImage, int optionsPerQuestion) {
     final grade = _grade!;
     final wrongRows = [
       for (final question in grade.perQuestion)
@@ -271,22 +271,22 @@ class GraderSession extends ChangeNotifier {
     );
     annotateWrongRows(reference, wrongRows, optionsPerQuestion);
     _referencePng = Uint8List.fromList(img.encodePng(reference));
-    _scannedPng = _encodeScan(pageImage, wrongRows, optionsPerQuestion);
+    _scannedPng = _encodeScan(captureImage, wrongRows, optionsPerQuestion);
   }
 
-  /// Encodes the scanned page with [highlightRows] (0-based) outlined in
-  /// red. Downscales camera-resolution pages first: full-resolution PNG
+  /// Encodes the capture image with [highlightRows] (0-based) outlined in
+  /// red. Downscales camera-resolution captures first: full-resolution PNG
   /// encodes block the UI thread for hundreds of ms, and the display never
   /// needs more pixels.
   Uint8List _encodeScan(
-    img.Image pageImage,
+    img.Image captureImage,
     List<int> highlightRows,
     int optionsPerQuestion,
   ) {
-    final targetWidth = (geom.pageWidthMm * referencePxPerMm).round();
-    final scanned = pageImage.width > targetWidth
-        ? img.copyResize(pageImage, width: targetWidth)
-        : pageImage.clone();
+    final targetWidth = (geom.captureWidthMm * referencePxPerMm).round();
+    final scanned = captureImage.width > targetWidth
+        ? img.copyResize(captureImage, width: targetWidth)
+        : captureImage.clone();
     annotateWrongRows(scanned, highlightRows, optionsPerQuestion);
     return Uint8List.fromList(img.encodePng(scanned));
   }

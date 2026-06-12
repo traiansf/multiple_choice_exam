@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:grader/framing.dart';
 import 'package:grader/omr.dart';
 import 'package:grader/sheet_geometry.dart' as geom;
 import 'package:image/image.dart' as img;
@@ -16,6 +17,13 @@ import 'package:image/image.dart' as img;
 /// The test stamps student marks onto the real sheet and runs detection. If
 /// sheet_geometry.dart ever drifted from render.py, the registration quad
 /// would map the bubbles to the wrong pixels and this test would fail.
+///
+/// Note: [detectMarks] expects the capture band, not the full page. All tests
+/// that call [detectMarks] first crop with [cropToGuideFraction] +
+/// [captureFractionOfPage]. The crop helper is shared with flatbed/fixture
+/// use; it is not the camera-guide path (the live camera derives its crop
+/// fraction from the on-screen guide position, not from [captureFractionOfPage]).
+
 void main() {
   test('detects marks stamped onto the real rendered sheet', () {
     final bytes = File('test/fixtures/variant-001-page1.png').readAsBytesSync();
@@ -37,7 +45,11 @@ void main() {
       );
     }
 
-    final result = detectMarks(sheet, rows: rows, optionsPerQuestion: m);
+    final result = detectMarks(
+      cropToGuideFraction(sheet, captureFractionOfPage()),
+      rows: rows,
+      optionsPerQuestion: m,
+    );
     expect(result.needsReview, isFalse, reason: result.reviewRows.toString());
     expect(result.marks, expected);
     expect(result.rows.every((r) => r.status == RowStatus.marked), isTrue);
@@ -101,7 +113,11 @@ void main() {
   test('unstamped real sheet reads as fully blank', () {
     final bytes = File('test/fixtures/variant-001-page1.png').readAsBytesSync();
     final sheet = img.decodePng(bytes)!;
-    final result = detectMarks(sheet, rows: 10, optionsPerQuestion: 4);
+    final result = detectMarks(
+      cropToGuideFraction(sheet, captureFractionOfPage()),
+      rows: 10,
+      optionsPerQuestion: 4,
+    );
     expect(result.needsReview, isFalse);
     expect(result.rows.every((r) => r.status == RowStatus.blank), isTrue);
   });

@@ -4,15 +4,27 @@
 /// bottom-left coordinates. The two must change together — this is the
 /// contract the OMR detection relies on; treat the constants as frozen once
 /// printed sheets are in the wild.
+///
+/// Registration marks bound the answer area (the capture frame), not the
+/// page corners.
 library;
 
+/// Dimensions of the printed sheet. Detection works inside the capture frame
+/// (captureWidthMm × captureHeightMm), so neither constant is consumed by OMR
+/// code; only x-axis logic uses pageWidthMm (which equals captureWidthMm).
 const double pageWidthMm = 210;
 const double pageHeightMm = 297;
 const double pageMarginMm = 15; // render.py: MARGIN
 
-/// Corner registration squares: inset from both page edges, side length.
+/// Registration squares: inset from the *capture frame* edges, side length.
+/// The capture frame is the region a sheet photo must cover: the full page
+/// width, but only the vertical band around the bubble grid (render.py:
+/// CAPTURE_TOP_MM / CAPTURE_HEIGHT_MM).
 const double regInsetMm = 8;
 const double regSizeMm = 6;
+const double captureTopMm = 45;
+const double captureHeightMm = 212;
+const double captureWidthMm = pageWidthMm;
 
 /// Bubble grid: row 0 center sits gridTopFromTopMm below the page top
 /// (render.py: GRID_TOP = PAGE_H - 70mm); rows run top-down in blocks of
@@ -35,18 +47,37 @@ int maxRows(int optionsPerQuestion) {
   return (usable / blockWidthMm(optionsPerQuestion)).floor() * rowsPerBlock;
 }
 
-/// Centres of the four corner registration squares, top-left origin, in the
-/// order [topLeft, topRight, bottomLeft, bottomRight].
+/// Centres of the four registration squares in page mm, top-left origin,
+/// order [topLeft, topRight, bottomLeft, bottomRight]. They bound the
+/// answer area: 11mm inset from the capture-frame edges.
 List<({double x, double y})> registrationMarkCentersMm() {
   const near = regInsetMm + regSizeMm / 2; // 11mm
   const farX = pageWidthMm - near; // 199mm
-  const farY = pageHeightMm - near; // 286mm
+  const topY = captureTopMm + near; // 56mm
+  const bottomY = captureTopMm + captureHeightMm - near; // 246mm
   return const [
-    (x: near, y: near),
-    (x: farX, y: near),
-    (x: near, y: farY),
-    (x: farX, y: farY),
+    (x: near, y: topY),
+    (x: farX, y: topY),
+    (x: near, y: bottomY),
+    (x: farX, y: bottomY),
   ];
+}
+
+/// Mark centres relative to the capture frame — where they appear in a
+/// correctly framed photo (image top-left = capture-frame top-left).
+List<({double x, double y})> registrationMarkCentersInCaptureMm() => [
+  for (final c in registrationMarkCentersMm()) (x: c.x, y: c.y - captureTopMm),
+];
+
+/// Centre of the bubble at [row], [col] relative to the capture frame —
+/// where it appears in a correctly framed photo.
+({double x, double y}) bubbleCenterInCaptureMm(
+  int row,
+  int col,
+  int optionsPerQuestion,
+) {
+  final c = bubbleCenterMm(row, col, optionsPerQuestion);
+  return (x: c.x, y: c.y - captureTopMm);
 }
 
 /// Centre of the bubble at [row], [col] (0-based), top-left origin.

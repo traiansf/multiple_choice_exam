@@ -60,6 +60,8 @@ class _ResultScreenState extends State<ResultScreen> {
               rows: omr!.reviewRows,
               total: omr.rows.length,
               scanPng: session.scannedSheetPng,
+              examTitle: session.answerKey?.examTitle,
+              variantId: session.qrPayload?.variantId,
               onSubmit: (score) => _finish(() {
                 session.submitManualGrade(score, studentName: _student);
                 session.nextSheet();
@@ -149,6 +151,8 @@ class _ReviewNotice extends StatefulWidget {
     required this.total,
     required this.scanPng,
     required this.onSubmit,
+    this.examTitle,
+    this.variantId,
   });
 
   final List<int> rows;
@@ -158,6 +162,11 @@ class _ReviewNotice extends StatefulWidget {
   /// what the camera saw while grading by hand.
   final Uint8List? scanPng;
   final void Function(int score) onSubmit;
+
+  /// Exam title and variant number for identification — mirrors the header
+  /// shown on the clean-grade view so the operator can match this sheet.
+  final String? examTitle;
+  final int? variantId;
 
   @override
   State<_ReviewNotice> createState() => _ReviewNoticeState();
@@ -199,6 +208,13 @@ class _ReviewNoticeState extends State<_ReviewNotice> {
               ),
             ],
           ),
+          if (widget.examTitle != null && widget.variantId != null) ...[
+            const SizedBox(height: 8),
+            Text(
+              '${widget.examTitle} — variant'
+              ' ${widget.variantId!.toString().padLeft(3, '0')}',
+            ),
+          ],
           const SizedBox(height: 16),
           Text(
             'Question row${widget.rows.length == 1 ? '' : 's'}'
@@ -255,8 +271,8 @@ class _LabeledSheet extends StatelessWidget {
       children: [
         Text(label, style: Theme.of(context).textTheme.labelLarge),
         const SizedBox(height: 4),
-        // Both images are full-page renders with the same A4 aspect, so
-        // equal-width columns show them scaled to match.
+        // Both images are capture-band renders with the same aspect (~210×212mm);
+        // equal-width columns show them at matching scale.
         Expanded(child: Image.memory(png, fit: BoxFit.contain)),
       ],
     );

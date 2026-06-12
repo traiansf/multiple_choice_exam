@@ -7,12 +7,27 @@ void main() {
   // top-left-origin millimetres. If these fail, the two sides of the printed
   // geometry contract have drifted.
 
-  test('registration mark centers sit 11mm from each page corner', () {
+  test('registration mark centers bound the answer area', () {
+    // order: TL, TR, BL, BR — must match registrationMarkCentersMm() doc
     expect(geom.registrationMarkCentersMm(), [
+      (x: 11.0, y: 56.0),
+      (x: 199.0, y: 56.0),
+      (x: 11.0, y: 246.0),
+      (x: 199.0, y: 246.0),
+    ]);
+  });
+
+  test('capture frame matches render.py CAPTURE_TOP_MM/CAPTURE_HEIGHT_MM', () {
+    expect(geom.captureWidthMm, 210.0);
+    expect(geom.captureWidthMm, geom.pageWidthMm);
+    expect(geom.captureTopMm, 45.0);
+    expect(geom.captureHeightMm, 212.0);
+    // Relative to the capture frame the marks keep the legacy 11mm inset.
+    expect(geom.registrationMarkCentersInCaptureMm(), [
       (x: 11.0, y: 11.0),
       (x: 199.0, y: 11.0),
-      (x: 11.0, y: 286.0),
-      (x: 199.0, y: 286.0),
+      (x: 11.0, y: 201.0),
+      (x: 199.0, y: 201.0),
     ]);
   });
 
@@ -36,5 +51,17 @@ void main() {
   test('page dimensions are A4', () {
     expect(geom.pageWidthMm, 210.0);
     expect(geom.pageHeightMm, 297.0);
+  });
+
+  test('bubbleCenterInCaptureMm subtracts captureTopMm from y', () {
+    // bubbleCenterMm(0, 0, 4) == (x: 39.0, y: 70.0); captureTopMm == 45.0
+    expect(geom.bubbleCenterInCaptureMm(0, 0, 4), (x: 39.0, y: 25.0));
+    // spot-check another row: bubbleCenterMm(1, 0, 4).y == 77.0 → 77 - 45 = 32
+    expect(geom.bubbleCenterInCaptureMm(1, 0, 4), (x: 39.0, y: 32.0));
+    // x is unchanged
+    expect(
+      geom.bubbleCenterInCaptureMm(0, 3, 4).x,
+      geom.bubbleCenterMm(0, 3, 4).x,
+    );
   });
 }

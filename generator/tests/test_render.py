@@ -1,9 +1,20 @@
+from reportlab.lib.units import mm
+
 from mcexam.qr import qr_png
 from mcexam.render import (
+    BUBBLE_RADIUS,
+    CAPTURE_HEIGHT_MM,
+    CAPTURE_TOP_MM,
     GRID_LEFT,
+    GRID_TOP,
     MARGIN,
+    NAME_LINE_TOP,
     PAGE_H,
     PAGE_W,
+    QR_SIZE,
+    QR_TOP,
+    REG_SIZE,
+    ROW_HEIGHT,
     ROWS_PER_BLOCK,
     bubble_center,
     max_rows,
@@ -42,10 +53,42 @@ def test_all_bubbles_inside_page() -> None:
             assert MARGIN <= y <= PAGE_H
 
 
-def test_four_registration_marks_at_corners() -> None:
+def test_registration_marks_bound_the_answer_area() -> None:
+    """The four marks sit 11mm inside the capture-frame edges; the capture
+    frame is the band a sheet photo must cover."""
+    assert CAPTURE_TOP_MM == 45
+    assert CAPTURE_HEIGHT_MM == 212
     positions = registration_mark_positions()
     assert len(positions) == 4
-    assert len({(round(x), round(y)) for x, y in positions}) == 4
+    centers = {(x + REG_SIZE / 2, y + REG_SIZE / 2) for x, y in positions}
+    assert centers == {
+        (11 * mm, 241 * mm),
+        (PAGE_W - 11 * mm, 241 * mm),
+        (11 * mm, 51 * mm),
+        (PAGE_W - 11 * mm, 51 * mm),
+    }
+
+
+def test_registration_marks_clear_the_sheet_content() -> None:
+    """The top mark band must sit between the header content (the name line
+    and the QR, which ends above the band) and the column letters; the bottom
+    band must sit below the lowest possible bubble. All in PDF bottom-left
+    coordinates here."""
+    positions = registration_mark_positions()
+    top_band_low = min(y for _, y in positions if y > PAGE_H / 2)
+    bottom_band_high = max(y + REG_SIZE for _, y in positions if y < PAGE_H / 2)
+
+    letters_ascender_top = GRID_TOP + 6 * mm + 9  # baseline + 9pt ascent bound
+    assert top_band_low > letters_ascender_top
+    name_descender_bottom = PAGE_H - NAME_LINE_TOP - 3  # baseline - 12pt descent bound
+    top_band_high = top_band_low + REG_SIZE
+    assert top_band_high < name_descender_bottom
+    # The QR must end above the capture band: QR ink inside the band would
+    # appear in every graded photo and intrude into the OMR's top-right
+    # mark-search window.
+    assert CAPTURE_TOP_MM * mm >= QR_TOP + QR_SIZE
+    lowest_bubble_bottom = GRID_TOP - (ROWS_PER_BLOCK - 1) * ROW_HEIGHT - BUBBLE_RADIUS
+    assert bottom_band_high < lowest_bubble_bottom
 
 
 def test_render_writes_pdf(tmp_path) -> None:

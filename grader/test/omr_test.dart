@@ -199,6 +199,20 @@ void main() {
     expect(result.rows.every((r) => r.status != RowStatus.marked), isTrue);
   });
 
+  test('marks detected despite header ink near the top windows', () {
+    // The name-line stripe biases the TL coarse centroid upward; without the
+    // refinement pass row 0 misreads.  See buildSheetImage doc for details.
+    final sheet = buildSheetImage(
+      rows: 5,
+      optionsPerQuestion: 4,
+      filledByRow: {0: [2]},
+      drawHeaderInk: true,
+    );
+    final result = detectMarks(sheet, rows: 5, optionsPerQuestion: 4);
+    expect(result.rows[0].mark, 2);
+    expect(result.rows[0].status, RowStatus.marked);
+  });
+
   test('missing registration mark raises a corner-naming error', () {
     final sheet = buildSheetImage(
       rows: 10,

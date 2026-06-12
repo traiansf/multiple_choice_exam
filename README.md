@@ -252,9 +252,14 @@ Each variant PDF contains: the exam title and variant id; the selected questions
 (in Easy→Medium→Hard order, but without printed section headings — students
 shouldn't see where the difficulty changes) with their scrambled options
 labeled A, B, C…; a
-fixed **OMR bubble grid** (one row per question, `M` bubbles per row); corner
-**registration marks** so the grading camera can locate and deskew the grid; and
-the **QR code**. The QR and the variant number are printed on **every page** —
+fixed **OMR bubble grid** (one row per question, `M` bubbles per row);
+**registration marks** bounding the answer area — full page width, only the
+band around the grid — so the grading camera needs to frame only that band
+(not the whole page); and the **QR code**. With the band framed on the marks,
+the graded photo excludes the title, variant number, and QR (all above the
+band); the printed name line sits just inside the band top, so the line itself
+and the bottom few millimetres of any handwritten name appear at the very top
+of the photo. The QR and the variant number are printed on **every page** —
 the answer sheet and each question page — so separated sheets can always be
 re-identified.
 

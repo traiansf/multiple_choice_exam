@@ -10,12 +10,12 @@ import 'sheet_builder.dart';
 
 void main() {
   group('pageGuideRect', () {
-    test('portrait canvas: A4 aspect, centered, inset', () {
+    test('portrait canvas: capture-frame aspect, centered, inset', () {
       const canvas = Size(400, 800);
       final guide = pageGuideRect(canvas);
       expect(
         guide.width / guide.height,
-        closeTo(geom.pageWidthMm / geom.pageHeightMm, 1e-9),
+        closeTo(geom.captureWidthMm / geom.captureHeightMm, 1e-9),
       );
       expect(guide.center.dx, closeTo(200, 1e-9));
       expect(guide.center.dy, closeTo(400, 1e-9));
@@ -27,19 +27,19 @@ void main() {
       final guide = pageGuideRect(canvas);
       expect(
         guide.width / guide.height,
-        closeTo(geom.pageWidthMm / geom.pageHeightMm, 1e-9),
+        closeTo(geom.captureWidthMm / geom.captureHeightMm, 1e-9),
       );
       expect(guide.height, lessThanOrEqualTo(400));
       expect(guide.top, greaterThanOrEqualTo(400 * 0.05 - 1e-9));
     });
   });
 
-  test('pageGuideRect on a square canvas stays inside with A4 aspect', () {
+  test('pageGuideRect on a square canvas stays inside with capture-frame aspect', () {
     const canvas = Size(500, 500);
     final guide = pageGuideRect(canvas);
     expect(
       guide.width / guide.height,
-      closeTo(geom.pageWidthMm / geom.pageHeightMm, 1e-9),
+      closeTo(geom.captureWidthMm / geom.captureHeightMm, 1e-9),
     );
     expect(guide.top, greaterThanOrEqualTo(0));
     expect(guide.bottom, lessThanOrEqualTo(500));
@@ -62,14 +62,14 @@ void main() {
     expect(exposureHint(tiny), contains('dark'));
   });
 
-  test('cornerMarkTargets sit at registration-mark relative positions', () {
-    final guide = Rect.fromLTWH(100, 50, 210, 297); // 1px per mm
+  test('cornerMarkTargets sit at capture-relative mark positions', () {
+    final guide = Rect.fromLTWH(100, 50, 210, 212); // 1px per mm
     final targets = cornerMarkTargets(guide);
     expect(targets, hasLength(4));
     expect(targets[0].center.dx, closeTo(100 + 11, 0.01));
     expect(targets[0].center.dy, closeTo(50 + 11, 0.01));
     expect(targets[1].center.dx, closeTo(100 + 199, 0.01));
-    expect(targets[3].center.dy, closeTo(50 + 286, 0.01));
+    expect(targets[3].center.dy, closeTo(50 + 201, 0.01));
     // 2x the printed mark size for alignment tolerance
     expect(targets[0].width, closeTo(2 * geom.regSizeMm, 0.01));
   });
@@ -142,6 +142,7 @@ void main() {
       );
       expect(hint, contains('top-left'));
       expect(hint, contains('bracket'));
+      expect(hint, contains('answer area'));
     });
 
     test('low resolution suggests moving closer', () {
@@ -154,5 +155,21 @@ void main() {
     test('unknown errors get the generic hold-flat hint', () {
       expect(framingHintFor(StateError('boom')), contains('flat'));
     });
+  });
+
+  test('defaultFramingHint mentions the black square (copy contract)', () {
+    expect(defaultFramingHint, contains('black square'));
+    expect(defaultFramingHint, contains('answer area'));
+  });
+
+  test('captureFractionOfPage pins top, height, left, width', () {
+    // top = captureTopMm / pageHeightMm = 45 / 297
+    // height = captureHeightMm / pageHeightMm = 212 / 297
+    // left = 0, width = 1
+    final f = captureFractionOfPage();
+    expect(f.left, closeTo(0, 1e-9));
+    expect(f.width, closeTo(1, 1e-9));
+    expect(f.top, closeTo(45 / 297, 1e-9));
+    expect(f.height, closeTo(212 / 297, 1e-9));
   });
 }

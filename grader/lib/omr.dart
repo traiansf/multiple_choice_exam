@@ -1,13 +1,13 @@
-/// OMR detection: locate the four registration marks in a page image, map
-/// the printed bubble grid onto it, sample each bubble's fill, and classify
-/// every row. Ambiguous or multi-marked rows are flagged for manual review,
-/// never guessed.
+/// OMR detection: locate the four registration marks in a capture-band image,
+/// map the printed bubble grid onto it, sample each bubble's fill, and
+/// classify every row. Ambiguous or multi-marked rows are flagged for manual
+/// review, never guessed.
 ///
-/// Assumes the input image is the answer-sheet page, roughly axis-aligned
-/// and cropped to the page bounds — a flatbed scan or an already-deskewed
-/// photo. The bilinear mapping over the detected registration quad absorbs
-/// translation, scale, and mild skew; strong perspective correction is the
-/// camera pipeline's job (later milestone).
+/// Assumes the input image frames the capture band — the answer area bounded
+/// by the registration marks (full page width, the vertical band around the
+/// bubble grid) — roughly axis-aligned. The bilinear mapping over the detected
+/// registration quad absorbs translation, scale, and mild skew; strong
+/// perspective correction is the camera pipeline's job (later milestone).
 library;
 
 import 'package:image/image.dart' as img;
@@ -101,9 +101,12 @@ class OmrConfig {
   /// between [emptyMax] and [filledMin] are ambiguous.
   final double emptyMax;
 
-  /// Half-size of each corner search window as a fraction of the page size.
-  /// Kept tight so nearby page content (title text, the QR code) stays out
-  /// of the window; a second, mark-sized pass refines the centroid.
+  /// Half-size of each corner search window as a fraction of the capture-band
+  /// size (image dimensions). The coarse window is intentionally wide enough
+  /// to locate the mark even with mild framing offsets; nearby ink (the name
+  /// line near the top marks, column letters) can fall inside it. The
+  /// mark-sized refinement pass then recenters on a tight window, rejecting
+  /// any bias from that stray ink.
   final double cornerWindowFraction;
 
   /// Bubble sampling radius as a fraction of the printed bubble radius
@@ -198,9 +201,11 @@ OmrRow _classifyRow(List<double> ratios, OmrConfig config) {
 
 List<_Point> _findRegistrationMarks(img.Image gray, OmrConfig config) {
   const cornerNames = ['top-left', 'top-right', 'bottom-left', 'bottom-right'];
-  final centers = geom.registrationMarkCentersMm();
-  final scaleX = gray.width / geom.pageWidthMm;
-  final scaleY = gray.height / geom.pageHeightMm;
+  // The input image is assumed to (roughly) frame the capture band — the
+  // answer area bounded by the marks — not the whole page.
+  final centers = geom.registrationMarkCentersInCaptureMm();
+  final scaleX = gray.width / geom.captureWidthMm;
+  final scaleY = gray.height / geom.captureHeightMm;
   final halfW = (gray.width * config.cornerWindowFraction).round();
   final halfH = (gray.height * config.cornerWindowFraction).round();
 
@@ -308,6 +313,9 @@ double _darkFraction(
 
 /// Maps page millimetres to image pixels by bilinear interpolation over the
 /// quad of detected registration-mark centers (order: tl, tr, bl, br).
+/// Coordinates are in page-mm (top-left origin); the detected quad is the
+/// capture band's four mark centers, so the mapper spans only the capture
+/// region, not the full page.
 class _BilinearMapper {
   _BilinearMapper(this._cornersPx) : _mm = geom.registrationMarkCentersMm();
 
