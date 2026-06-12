@@ -8,8 +8,8 @@
 The four registration marks sit at the page corners, so a gradable photo must
 frame the entire A4 page even though the bubble grid occupies only the band
 between ~70 mm and ~240 mm from the page top. Framing the whole page is
-awkward, wastes camera resolution on regions the OMR never reads, and puts
-the student's name and the QR into every graded photo.
+awkward, wastes camera resolution on regions the OMR never reads, and
+includes more of the sheet header in every graded photo than necessary.
 
 ## Goal
 
@@ -45,8 +45,10 @@ edges:
 Printed-sheet clearances (top-left-origin mm, from current `render.py`
 content):
 
-- Top mark band spans 53–59 mm: ~3.5 mm below the name-line text and the QR
-  bottom edge (≈49–50 mm), ~2.8 mm above the column-letter ascenders (≈62 mm,
+- Top mark band spans 53–59 mm: ~3.5 mm below the name-line baseline (48 mm;
+  the name line sits at the band's top edge, so descenders may appear at the
+  very top of the photo); QR fully above the band (page-y 16..44 mm, ends 1 mm
+  above the band top); ~2.8 mm above the column-letter ascenders (≈62 mm,
   baseline 64 mm).
 - Bottom mark band spans 243–249 mm: 3 mm below the lowest possible bubble
   edge (240 mm; row 24 center at 238 mm).
@@ -129,6 +131,8 @@ hint text changes to direct the user to frame the answer area.
 
 - Px/mm gain in a 3:4 portrait photo is modest (~6%) because the frame is
   still full page width.
-- Real wins: a near-square, smaller framing target; the student name and QR
-  stay out of graded photos; a tighter registration quad around the bubbles
-  reduces lens/perspective error where bubbles are sampled.
+- Real wins: a near-square, smaller framing target; the title, variant number,
+  and QR are fully above the band and stay out of graded photos; the name line
+  sits at the band's top edge (its lower pixels may appear at the very top of
+  the photo); a tighter registration quad around the bubbles reduces
+  lens/perspective error where bubbles are sampled.
