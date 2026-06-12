@@ -18,10 +18,10 @@ import 'package:image/image.dart' as img;
 /// would map the bubbles to the wrong pixels and this test would fail.
 ///
 /// Note: [detectMarks] expects the capture band, not the full page. All tests
-/// that call [detectMarks] first crop with [cropToCapture] — exactly what the
-/// production [cropToGuideFraction] path does.
+/// that call [detectMarks] first crop with [cropToCapture] — mirroring what the
+/// production [cropToGuideFraction] path hands to [detectMarks].
 
-/// Crops the full-page fixture raster to the capture band — exactly what
+/// Crops the full-page fixture raster to the capture band — mirroring what
 /// the production cropToGuideFraction path hands to detectMarks.
 img.Image cropToCapture(img.Image page) {
   final pxPerMm = page.width / geom.pageWidthMm;

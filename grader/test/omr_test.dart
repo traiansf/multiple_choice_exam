@@ -199,7 +199,7 @@ void main() {
     expect(result.rows.every((r) => r.status != RowStatus.marked), isTrue);
   });
 
-  test('marks detected despite header ink near the top windows and offset', () {
+  test('marks detected despite header ink near the top windows', () {
     // The name-line stripe (x 8..90mm, capture-y 2.5..4.25mm, 1.75mm tall)
     // places ~376 dark pixels inside the TL coarse window at y≈3.4mm, biasing
     // the coarse centroid ~2.9mm above the true mark centre (y=11mm).
