@@ -7,12 +7,25 @@ void main() {
   // top-left-origin millimetres. If these fail, the two sides of the printed
   // geometry contract have drifted.
 
-  test('registration mark centers sit 11mm from each page corner', () {
+  test('registration mark centers bound the answer area', () {
     expect(geom.registrationMarkCentersMm(), [
+      (x: 11.0, y: 56.0),
+      (x: 199.0, y: 56.0),
+      (x: 11.0, y: 246.0),
+      (x: 199.0, y: 246.0),
+    ]);
+  });
+
+  test('capture frame matches render.py CAPTURE_TOP/CAPTURE_HEIGHT', () {
+    expect(geom.captureWidthMm, 210.0);
+    expect(geom.captureTopMm, 45.0);
+    expect(geom.captureHeightMm, 212.0);
+    // Relative to the capture frame the marks keep the legacy 11mm inset.
+    expect(geom.registrationMarkCentersInCaptureMm(), [
       (x: 11.0, y: 11.0),
       (x: 199.0, y: 11.0),
-      (x: 11.0, y: 286.0),
-      (x: 199.0, y: 286.0),
+      (x: 11.0, y: 201.0),
+      (x: 199.0, y: 201.0),
     ]);
   });
 
