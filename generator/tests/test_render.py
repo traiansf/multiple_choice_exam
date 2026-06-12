@@ -3,6 +3,8 @@ from reportlab.lib.units import mm
 from mcexam.qr import qr_png
 from mcexam.render import (
     BUBBLE_RADIUS,
+    CAPTURE_HEIGHT_MM,
+    CAPTURE_TOP_MM,
     GRID_LEFT,
     GRID_TOP,
     MARGIN,
@@ -52,9 +54,10 @@ def test_all_bubbles_inside_page() -> None:
 
 
 def test_registration_marks_bound_the_answer_area() -> None:
-    """Mark centers (PDF bottom-left mm): 11mm inset from the capture-frame
-    edges — x at 11/199mm, y at 297-56=241mm (top pair) and 297-246=51mm
-    (bottom pair). The capture frame is the band a sheet photo must cover."""
+    """The four marks sit 11mm inside the capture-frame edges; the capture
+    frame is the band a sheet photo must cover."""
+    assert CAPTURE_TOP_MM == 45
+    assert CAPTURE_HEIGHT_MM == 212
     positions = registration_mark_positions()
     assert len(positions) == 4
     centers = {(x + REG_SIZE / 2, y + REG_SIZE / 2) for x, y in positions}

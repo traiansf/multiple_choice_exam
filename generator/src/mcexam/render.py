@@ -26,16 +26,17 @@ MARGIN = 15 * mm
 # must cover — the full page width, but only the vertical band around the
 # bubble grid. Marks are inset REG_INSET from the capture-frame edges,
 # mirroring grader/lib/sheet_geometry.dart (captureTopMm/captureHeightMm).
+#
+# Whole-mm ints keep position arithmetic exact (byte-reproducible PDFs).
+# CAPTURE_TOP_MM / CAPTURE_HEIGHT_MM are the grader-facing contract values
+# mirrored by grader/lib/sheet_geometry.dart as captureTopMm/captureHeightMm.
+# REG_INSET and REG_SIZE are point-valued and used in registration_mark_positions
+# and _draw_answer_sheet.
 _PAGE_H_MM = 297  # A4 page height in whole mm; kept as int for exact arithmetic
-_CAPTURE_TOP_MM = 45  # capture-frame top, measured from the page top (mm)
-_CAPTURE_HEIGHT_MM = 212  # capture-frame height (mm)
+CAPTURE_TOP_MM = 45  # capture-frame top, measured from the page top (mm)
+CAPTURE_HEIGHT_MM = 212  # capture-frame height (mm)
 _REG_INSET_MM = 8  # inset from capture-frame edges (mm)
 _REG_SIZE_MM = 6  # mark square side length (mm)
-# Internal arithmetic uses the exact whole-mm ints above; these point-valued
-# constants are the public, grader-facing contract surface (mirrored by
-# grader/lib/sheet_geometry.dart) and have no in-module consumer.
-CAPTURE_TOP = _CAPTURE_TOP_MM * mm
-CAPTURE_HEIGHT = _CAPTURE_HEIGHT_MM * mm
 REG_INSET = _REG_INSET_MM * mm
 REG_SIZE = _REG_SIZE_MM * mm
 
@@ -92,8 +93,8 @@ def registration_mark_positions() -> list[tuple[float, float]]:
     """Lower-left corners of the four marks bounding the answer area."""
     # Integer mm arithmetic first, then a single multiply by mm, to avoid
     # floating-point accumulation from chaining n*mm subtraction operations.
-    top_y = (_PAGE_H_MM - _CAPTURE_TOP_MM - _REG_INSET_MM - _REG_SIZE_MM) * mm
-    bottom_y = (_PAGE_H_MM - _CAPTURE_TOP_MM - _CAPTURE_HEIGHT_MM + _REG_INSET_MM) * mm
+    top_y = (_PAGE_H_MM - CAPTURE_TOP_MM - _REG_INSET_MM - _REG_SIZE_MM) * mm
+    bottom_y = (_PAGE_H_MM - CAPTURE_TOP_MM - CAPTURE_HEIGHT_MM + _REG_INSET_MM) * mm
     return [
         (REG_INSET, top_y),
         (PAGE_W - REG_INSET - REG_SIZE, top_y),
