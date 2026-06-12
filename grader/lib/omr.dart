@@ -101,9 +101,12 @@ class OmrConfig {
   /// between [emptyMax] and [filledMin] are ambiguous.
   final double emptyMax;
 
-  /// Half-size of each corner search window as a fraction of the page size.
-  /// Kept tight so nearby page content (title text, the QR code) stays out
-  /// of the window; a second, mark-sized pass refines the centroid.
+  /// Half-size of each corner search window as a fraction of the capture-band
+  /// size (image dimensions). The coarse window is intentionally wide enough
+  /// to locate the mark even with mild framing offsets; nearby ink (the name
+  /// line near the top marks, column letters) can fall inside it. The
+  /// mark-sized refinement pass then recenters on a tight window, rejecting
+  /// any bias from that stray ink.
   final double cornerWindowFraction;
 
   /// Bubble sampling radius as a fraction of the printed bubble radius
@@ -310,6 +313,9 @@ double _darkFraction(
 
 /// Maps page millimetres to image pixels by bilinear interpolation over the
 /// quad of detected registration-mark centers (order: tl, tr, bl, br).
+/// Coordinates are in page-mm (top-left origin); the detected quad is the
+/// capture band's four mark centers, so the mapper spans only the capture
+/// region, not the full page.
 class _BilinearMapper {
   _BilinearMapper(this._cornersPx) : _mm = geom.registrationMarkCentersMm();
 
