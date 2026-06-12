@@ -143,6 +143,23 @@ def test_every_page_carries_the_variant_qr(tmp_path) -> None:
     assert data.count(b" Do") == pages
 
 
+def test_question_pages_do_not_print_section_names(tmp_path, monkeypatch) -> None:
+    """Section names are an internal difficulty grouping; printing them would
+    tell students where the easy points are. With Helvetica (no TTF subsetting)
+    and pageCompression=0, every drawn string appears literally in the PDF."""
+    import mcexam.render as render_module
+
+    monkeypatch.setattr(render_module, "_body_font", lambda: "Helvetica")
+    exam = load_exam(SAMPLE_MD)
+    plan = build_variant(1, exam.section_sizes(), {"easy": 2, "medium": 2, "hard": 1}, 4)
+    out = tmp_path / "v.pdf"
+    render_variant(out, exam, plan, qr_png("v1|1|1|2|2|1|deadbeef"), 1)
+    data = out.read_bytes()
+    assert b"(Variant 001)" in data  # sanity: drawn text is greppable in this setup
+    for heading in (b"(Easy)", b"(Medium)", b"(Hard)"):
+        assert heading not in data
+
+
 def test_clamp_line_fits_or_ellipsizes() -> None:
     from reportlab.pdfbase.pdfmetrics import stringWidth
 

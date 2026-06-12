@@ -16,7 +16,7 @@ from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfbase.ttfonts import TTFont
 from reportlab.pdfgen.canvas import Canvas
 
-from .model import SECTION_KEYS, SECTION_NAMES, Exam
+from .model import Exam
 from .select import VariantPlan
 
 PAGE_W, PAGE_H = A4
@@ -186,7 +186,6 @@ def _draw_questions(
     font: str,
     qr_png_bytes: bytes,
 ) -> None:
-    section_titles = dict(zip(SECTION_KEYS, SECTION_NAMES, strict=True))
     width = PAGE_W - 2 * MARGIN
     qr_image = ImageReader(io.BytesIO(qr_png_bytes))
     y = PAGE_H - MARGIN
@@ -224,7 +223,6 @@ def _draw_questions(
 
     page_header()
 
-    current_section = None
     for number, sheet_question in enumerate(plan.sheet, start=1):
         question = exam.sections[sheet_question.section][sheet_question.index_in_section]
         prompt_lines = simpleSplit(f"{number}. {question.prompt}", font, 11, width)
@@ -233,14 +231,7 @@ def _draw_questions(
             text = f"{OPTION_LETTERS[position]}) {question.options[original_index]}"
             option_lines.extend(simpleSplit(text, font, 11, width - 8 * mm))
         needed = 14 * len(prompt_lines) + 13 * len(option_lines) + 10
-        if sheet_question.section != current_section:
-            needed += 26
         ensure_space(needed)
-        if sheet_question.section != current_section:
-            current_section = sheet_question.section
-            canvas.setFont(font, 13)
-            canvas.drawString(MARGIN, y - 13, section_titles[current_section])
-            y -= 26
         canvas.setFont(font, 11)
         for line in prompt_lines:
             canvas.drawString(MARGIN, y - 11, line)

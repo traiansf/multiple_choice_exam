@@ -249,7 +249,9 @@ and how many questions were drawn from each section — live in the QR.
 ### PDF anatomy
 
 Each variant PDF contains: the exam title and variant id; the selected questions
-(grouped Easy→Medium→Hard) with their scrambled options labeled A, B, C…; a
+(in Easy→Medium→Hard order, but without printed section headings — students
+shouldn't see where the difficulty changes) with their scrambled options
+labeled A, B, C…; a
 fixed **OMR bubble grid** (one row per question, `M` bubbles per row); corner
 **registration marks** so the grading camera can locate and deskew the grid; and
 the **QR code**. The QR and the variant number are printed on **every page** —
