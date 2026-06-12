@@ -1,8 +1,8 @@
 /// The on-screen framing guide drawn over the camera preview: the area
-/// outside the A4 page frame is dimmed, the frame has a light border, and
-/// four bracket squares show where the printed corner registration marks
-/// must sit. Geometry comes from framing.dart so it always matches what the
-/// OMR crop expects.
+/// outside the answer-area frame is dimmed, the frame has a light border, and
+/// four bracket squares show where the printed registration marks must sit.
+/// Geometry comes from framing.dart so it always matches what the OMR crop
+/// expects.
 library;
 
 import 'package:flutter/material.dart';
@@ -27,8 +27,9 @@ class SheetGuideOverlay extends StatelessWidget {
             padding: const EdgeInsets.all(16),
             child: Text(
               hint ??
-                  'Hold the phone flat above the sheet. Fill the frame and'
-                      ' put each black corner square in its bracket.',
+                  'Hold the phone flat above the sheet. Fit the answer area'
+                      ' in the frame and put each black square in its'
+                      ' bracket.',
               textAlign: TextAlign.center,
               style: const TextStyle(
                 color: Colors.white,
