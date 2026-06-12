@@ -283,7 +283,7 @@ class GraderSession extends ChangeNotifier {
     List<int> highlightRows,
     int optionsPerQuestion,
   ) {
-    final targetWidth = (geom.pageWidthMm * referencePxPerMm).round();
+    final targetWidth = (geom.captureWidthMm * referencePxPerMm).round();
     final scanned = pageImage.width > targetWidth
         ? img.copyResize(pageImage, width: targetWidth)
         : pageImage.clone();

@@ -17,14 +17,15 @@ void main() {
     expect(result.marks, correctPositions);
   });
 
-  test('reference sheet has A4 aspect at the requested resolution', () {
+  test('reference sheet has capture-frame aspect at the requested resolution',
+      () {
     final sheet = renderReferenceSheet(
       correctPositions: correctPositions,
       optionsPerQuestion: 4,
       pxPerMm: 3,
     );
-    expect(sheet.width, (geom.pageWidthMm * 3).round());
-    expect(sheet.height, (geom.pageHeightMm * 3).round());
+    expect(sheet.width, (geom.captureWidthMm * 3).round());
+    expect(sheet.height, (geom.captureHeightMm * 3).round());
   });
 
   bool stripHasRed(img.Image sheet, int row, int optionsPerQuestion) {
@@ -43,8 +44,8 @@ void main() {
       // ±3mm: inside this row's annotation band (±3.15mm) but clear of the
       // neighbouring rows' bands (7mm pitch).
       for (
-        var y = ((first.y - 3) * pxPerMm).round();
-        y <= ((first.y + 3) * pxPerMm).round();
+        var y = ((first.y - geom.captureTopMm - 3) * pxPerMm).round();
+        y <= ((first.y - geom.captureTopMm + 3) * pxPerMm).round();
         y++
       ) {
         final pixel = sheet.getPixel(x, y);
