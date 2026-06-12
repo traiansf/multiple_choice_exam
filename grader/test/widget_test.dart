@@ -95,6 +95,7 @@ void main() {
     await tester.pumpWidget(MaterialApp(home: ResultScreen(session: session)));
     expect(find.text('Manual review needed'), findsOneWidget);
     expect(find.textContaining('row 2'), findsOneWidget);
+    expect(find.textContaining('variant 001'), findsOneWidget);
   });
 
   testWidgets('result screen shows blank-row text for unanswered question', (
