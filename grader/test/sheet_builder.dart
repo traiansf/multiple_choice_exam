@@ -70,11 +70,9 @@ img.Image buildSheetImage({
 
   for (var row = 0; row < rows; row++) {
     for (var col = 0; col < optionsPerQuestion; col++) {
-      final c = geom.bubbleCenterMm(row, col, optionsPerQuestion);
+      final c = geom.bubbleCenterInCaptureMm(row, col, optionsPerQuestion);
       final cx = ((c.x + offsetMm.x) * pxPerMm).round();
-      // bubbleCenterMm returns page-mm; subtracting captureTopMm converts to
-      // capture-frame coordinates (image top = capture top).
-      final cy = ((c.y - geom.captureTopMm + offsetMm.y) * pxPerMm).round();
+      final cy = ((c.y + offsetMm.y) * pxPerMm).round();
       img.drawCircle(
         image,
         x: cx,

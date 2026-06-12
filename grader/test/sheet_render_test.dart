@@ -30,8 +30,8 @@ void main() {
 
   bool stripHasRed(img.Image sheet, int row, int optionsPerQuestion) {
     final pxPerMm = sheet.width / geom.captureWidthMm;
-    final first = geom.bubbleCenterMm(row, 0, optionsPerQuestion);
-    final last = geom.bubbleCenterMm(
+    final first = geom.bubbleCenterInCaptureMm(row, 0, optionsPerQuestion);
+    final last = geom.bubbleCenterInCaptureMm(
       row,
       optionsPerQuestion - 1,
       optionsPerQuestion,
@@ -44,8 +44,8 @@ void main() {
       // ±3mm: inside this row's annotation band (±3.15mm) but clear of the
       // neighbouring rows' bands (7mm pitch).
       for (
-        var y = ((first.y - geom.captureTopMm - 3) * pxPerMm).round();
-        y <= ((first.y - geom.captureTopMm + 3) * pxPerMm).round();
+        var y = ((first.y - 3) * pxPerMm).round();
+        y <= ((first.y + 3) * pxPerMm).round();
         y++
       ) {
         final pixel = sheet.getPixel(x, y);

@@ -52,4 +52,16 @@ void main() {
     expect(geom.pageWidthMm, 210.0);
     expect(geom.pageHeightMm, 297.0);
   });
+
+  test('bubbleCenterInCaptureMm subtracts captureTopMm from y', () {
+    // bubbleCenterMm(0, 0, 4) == (x: 39.0, y: 70.0); captureTopMm == 45.0
+    expect(geom.bubbleCenterInCaptureMm(0, 0, 4), (x: 39.0, y: 25.0));
+    // spot-check another row: bubbleCenterMm(1, 0, 4).y == 77.0 → 77 - 45 = 32
+    expect(geom.bubbleCenterInCaptureMm(1, 0, 4), (x: 39.0, y: 32.0));
+    // x is unchanged
+    expect(
+      geom.bubbleCenterInCaptureMm(0, 3, 4).x,
+      geom.bubbleCenterMm(0, 3, 4).x,
+    );
+  });
 }

@@ -69,6 +69,17 @@ List<({double x, double y})> registrationMarkCentersInCaptureMm() => [
   for (final c in registrationMarkCentersMm()) (x: c.x, y: c.y - captureTopMm),
 ];
 
+/// Centre of the bubble at [row], [col] relative to the capture frame —
+/// where it appears in a correctly framed photo.
+({double x, double y}) bubbleCenterInCaptureMm(
+  int row,
+  int col,
+  int optionsPerQuestion,
+) {
+  final c = bubbleCenterMm(row, col, optionsPerQuestion);
+  return (x: c.x, y: c.y - captureTopMm);
+}
+
 /// Centre of the bubble at [row], [col] (0-based), top-left origin.
 ({double x, double y}) bubbleCenterMm(
   int row,

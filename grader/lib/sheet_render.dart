@@ -45,9 +45,9 @@ img.Image renderReferenceSheet({
 
   for (var row = 0; row < correctPositions.length; row++) {
     for (var col = 0; col < optionsPerQuestion; col++) {
-      final center = geom.bubbleCenterMm(row, col, optionsPerQuestion);
+      final center = geom.bubbleCenterInCaptureMm(row, col, optionsPerQuestion);
       final cx = (center.x * pxPerMm).round();
-      final cy = ((center.y - geom.captureTopMm) * pxPerMm).round();
+      final cy = (center.y * pxPerMm).round();
       img.drawCircle(
         sheet,
         x: cx,
@@ -80,8 +80,8 @@ void annotateWrongRows(
   final pxPerMm = sheet.width / geom.captureWidthMm;
   final red = img.ColorRgb8(220, 30, 30);
   for (final row in wrongRows) {
-    final first = geom.bubbleCenterMm(row, 0, optionsPerQuestion);
-    final last = geom.bubbleCenterMm(
+    final first = geom.bubbleCenterInCaptureMm(row, 0, optionsPerQuestion);
+    final last = geom.bubbleCenterInCaptureMm(
       row,
       optionsPerQuestion - 1,
       optionsPerQuestion,
@@ -89,13 +89,9 @@ void annotateWrongRows(
     img.drawRect(
       sheet,
       x1: ((first.x - 6) * pxPerMm).round(),
-      y1: ((first.y - geom.captureTopMm - geom.rowHeightMm / 2 * 0.9) *
-              pxPerMm)
-          .round(),
+      y1: ((first.y - geom.rowHeightMm / 2 * 0.9) * pxPerMm).round(),
       x2: ((last.x + 6) * pxPerMm).round(),
-      y2: ((first.y - geom.captureTopMm + geom.rowHeightMm / 2 * 0.9) *
-              pxPerMm)
-          .round(),
+      y2: ((first.y + geom.rowHeightMm / 2 * 0.9) * pxPerMm).round(),
       color: red,
       thickness: (0.4 * pxPerMm).clamp(1, 6),
     );
