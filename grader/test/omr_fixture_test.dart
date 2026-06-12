@@ -16,6 +16,24 @@ import 'package:image/image.dart' as img;
 /// The test stamps student marks onto the real sheet and runs detection. If
 /// sheet_geometry.dart ever drifted from render.py, the registration quad
 /// would map the bubbles to the wrong pixels and this test would fail.
+///
+/// Note: [detectMarks] expects the capture band, not the full page. All tests
+/// that call [detectMarks] first crop with [cropToCapture] — exactly what the
+/// production [cropToGuideFraction] path does.
+
+/// Crops the full-page fixture raster to the capture band — exactly what
+/// the production cropToGuideFraction path hands to detectMarks.
+img.Image cropToCapture(img.Image page) {
+  final pxPerMm = page.width / geom.pageWidthMm;
+  return img.copyCrop(
+    page,
+    x: 0,
+    y: (geom.captureTopMm * pxPerMm).round(),
+    width: page.width,
+    height: (geom.captureHeightMm * pxPerMm).round(),
+  );
+}
+
 void main() {
   test('detects marks stamped onto the real rendered sheet', () {
     final bytes = File('test/fixtures/variant-001-page1.png').readAsBytesSync();
@@ -37,7 +55,7 @@ void main() {
       );
     }
 
-    final result = detectMarks(sheet, rows: rows, optionsPerQuestion: m);
+    final result = detectMarks(cropToCapture(sheet), rows: rows, optionsPerQuestion: m);
     expect(result.needsReview, isFalse, reason: result.reviewRows.toString());
     expect(result.marks, expected);
     expect(result.rows.every((r) => r.status == RowStatus.marked), isTrue);
@@ -101,7 +119,7 @@ void main() {
   test('unstamped real sheet reads as fully blank', () {
     final bytes = File('test/fixtures/variant-001-page1.png').readAsBytesSync();
     final sheet = img.decodePng(bytes)!;
-    final result = detectMarks(sheet, rows: 10, optionsPerQuestion: 4);
+    final result = detectMarks(cropToCapture(sheet), rows: 10, optionsPerQuestion: 4);
     expect(result.needsReview, isFalse);
     expect(result.rows.every((r) => r.status == RowStatus.blank), isTrue);
   });
