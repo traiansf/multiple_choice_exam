@@ -10,7 +10,7 @@ import 'sheet_builder.dart';
 
 void main() {
   group('pageGuideRect', () {
-    test('portrait canvas: A4 aspect, centered, inset', () {
+    test('portrait canvas: capture-frame aspect, centered, inset', () {
       const canvas = Size(400, 800);
       final guide = pageGuideRect(canvas);
       expect(
@@ -34,7 +34,7 @@ void main() {
     });
   });
 
-  test('pageGuideRect on a square canvas stays inside with A4 aspect', () {
+  test('pageGuideRect on a square canvas stays inside with capture-frame aspect', () {
     const canvas = Size(500, 500);
     final guide = pageGuideRect(canvas);
     expect(

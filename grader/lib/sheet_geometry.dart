@@ -9,6 +9,9 @@
 /// page corners.
 library;
 
+/// Dimensions of the printed sheet. Detection works inside the capture frame
+/// (captureWidthMm × captureHeightMm), so neither constant is consumed by OMR
+/// code; only x-axis logic uses pageWidthMm (which equals captureWidthMm).
 const double pageWidthMm = 210;
 const double pageHeightMm = 297;
 const double pageMarginMm = 15; // render.py: MARGIN
