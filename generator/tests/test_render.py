@@ -1,9 +1,15 @@
+from reportlab.lib.units import mm
+
 from mcexam.qr import qr_png
 from mcexam.render import (
+    BUBBLE_RADIUS,
     GRID_LEFT,
+    GRID_TOP,
     MARGIN,
     PAGE_H,
     PAGE_W,
+    REG_SIZE,
+    ROW_HEIGHT,
     ROWS_PER_BLOCK,
     bubble_center,
     max_rows,
@@ -42,10 +48,39 @@ def test_all_bubbles_inside_page() -> None:
             assert MARGIN <= y <= PAGE_H
 
 
-def test_four_registration_marks_at_corners() -> None:
+def test_registration_marks_bound_the_answer_area() -> None:
+    """Mark centers (PDF bottom-left mm): 11mm inset from the capture-frame
+    edges — x at 11/199mm, y at 297-56=241mm (top pair) and 297-246=51mm
+    (bottom pair). The capture frame is the band a sheet photo must cover."""
     positions = registration_mark_positions()
     assert len(positions) == 4
-    assert len({(round(x), round(y)) for x, y in positions}) == 4
+    centers = {(x + REG_SIZE / 2, y + REG_SIZE / 2) for x, y in positions}
+    assert centers == {
+        (11 * mm, 241 * mm),
+        (PAGE_W - 11 * mm, 241 * mm),
+        (11 * mm, 51 * mm),
+        (PAGE_W - 11 * mm, 51 * mm),
+    }
+
+
+def test_registration_marks_clear_the_sheet_content() -> None:
+    """The top mark band must sit between the header content (name line at
+    48mm from top, QR bottom at 50mm) and the column letters (baseline 64mm
+    from top, 9pt); the bottom band must sit below the lowest possible
+    bubble. All in PDF bottom-left coordinates here."""
+    positions = registration_mark_positions()
+    top_band_low = min(y for _, y in positions if y > PAGE_H / 2)
+    bottom_band_high = max(y + REG_SIZE for _, y in positions if y < PAGE_H / 2)
+
+    letters_ascender_top = GRID_TOP + 6 * mm + 9  # baseline + 9pt ascent bound
+    assert top_band_low > letters_ascender_top
+    name_descender_bottom = PAGE_H - 48 * mm - 3  # baseline - 12pt descent bound
+    qr_bottom = PAGE_H - 22 * mm - 28 * mm
+    top_band_high = top_band_low + REG_SIZE
+    assert top_band_high < name_descender_bottom
+    assert top_band_high < qr_bottom
+    lowest_bubble_bottom = GRID_TOP - (ROWS_PER_BLOCK - 1) * ROW_HEIGHT - BUBBLE_RADIUS
+    assert bottom_band_high < lowest_bubble_bottom
 
 
 def test_render_writes_pdf(tmp_path) -> None:

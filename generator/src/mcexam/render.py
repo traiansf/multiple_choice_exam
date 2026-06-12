@@ -22,9 +22,19 @@ from .select import VariantPlan
 PAGE_W, PAGE_H = A4
 MARGIN = 15 * mm
 
-# Registration marks: filled squares at the four page corners.
-REG_INSET = 8 * mm
-REG_SIZE = 6 * mm
+# Registration marks bound the *capture frame*: the region a sheet photo
+# must cover — the full page width, but only the vertical band around the
+# bubble grid. Marks are inset REG_INSET from the capture-frame edges,
+# mirroring grader/lib/sheet_geometry.dart (captureTopMm/captureHeightMm).
+_PAGE_H_MM = 297  # A4 page height in whole mm; kept as int for exact arithmetic
+_CAPTURE_TOP_MM = 45  # capture-frame top, measured from the page top (mm)
+_CAPTURE_HEIGHT_MM = 212  # capture-frame height (mm)
+_REG_INSET_MM = 8  # inset from capture-frame edges (mm)
+_REG_SIZE_MM = 6  # mark square side length (mm)
+CAPTURE_TOP = _CAPTURE_TOP_MM * mm
+CAPTURE_HEIGHT = _CAPTURE_HEIGHT_MM * mm
+REG_INSET = _REG_INSET_MM * mm
+REG_SIZE = _REG_SIZE_MM * mm
 
 # Bubble grid: rows run top-down in vertical blocks of ROWS_PER_BLOCK,
 # blocks stack left-to-right.
@@ -68,12 +78,16 @@ def bubble_center(row: int, col: int, options_per_question: int) -> tuple[float,
 
 
 def registration_mark_positions() -> list[tuple[float, float]]:
-    """Lower-left corners of the four corner squares."""
+    """Lower-left corners of the four marks bounding the answer area."""
+    # Integer mm arithmetic first, then a single multiply by mm, to avoid
+    # floating-point accumulation from chaining n*mm subtraction operations.
+    top_y = (_PAGE_H_MM - _CAPTURE_TOP_MM - _REG_INSET_MM - _REG_SIZE_MM) * mm
+    bottom_y = (_PAGE_H_MM - _CAPTURE_TOP_MM - _CAPTURE_HEIGHT_MM + _REG_INSET_MM) * mm
     return [
-        (REG_INSET, PAGE_H - REG_INSET - REG_SIZE),
-        (PAGE_W - REG_INSET - REG_SIZE, PAGE_H - REG_INSET - REG_SIZE),
-        (REG_INSET, REG_INSET),
-        (PAGE_W - REG_INSET - REG_SIZE, REG_INSET),
+        (REG_INSET, top_y),
+        (PAGE_W - REG_INSET - REG_SIZE, top_y),
+        (REG_INSET, bottom_y),
+        (PAGE_W - REG_INSET - REG_SIZE, bottom_y),
     ]
 
 
