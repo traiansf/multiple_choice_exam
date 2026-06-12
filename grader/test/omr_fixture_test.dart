@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:grader/framing.dart';
 import 'package:grader/omr.dart';
 import 'package:grader/sheet_geometry.dart' as geom;
 import 'package:image/image.dart' as img;
@@ -18,21 +19,9 @@ import 'package:image/image.dart' as img;
 /// would map the bubbles to the wrong pixels and this test would fail.
 ///
 /// Note: [detectMarks] expects the capture band, not the full page. All tests
-/// that call [detectMarks] first crop with [cropToCapture] — mirroring what the
-/// production [cropToGuideFraction] path hands to [detectMarks].
-
-/// Crops the full-page fixture raster to the capture band — mirroring what
-/// the production cropToGuideFraction path hands to detectMarks.
-img.Image cropToCapture(img.Image page) {
-  final pxPerMm = page.width / geom.pageWidthMm;
-  return img.copyCrop(
-    page,
-    x: 0,
-    y: (geom.captureTopMm * pxPerMm).round(),
-    width: page.width,
-    height: (geom.captureHeightMm * pxPerMm).round(),
-  );
-}
+/// that call [detectMarks] first crop with [cropToGuideFraction] +
+/// [captureFractionOfPage] — exercising the same production path the camera
+/// screen uses.
 
 void main() {
   test('detects marks stamped onto the real rendered sheet', () {
@@ -55,7 +44,11 @@ void main() {
       );
     }
 
-    final result = detectMarks(cropToCapture(sheet), rows: rows, optionsPerQuestion: m);
+    final result = detectMarks(
+      cropToGuideFraction(sheet, captureFractionOfPage()),
+      rows: rows,
+      optionsPerQuestion: m,
+    );
     expect(result.needsReview, isFalse, reason: result.reviewRows.toString());
     expect(result.marks, expected);
     expect(result.rows.every((r) => r.status == RowStatus.marked), isTrue);
@@ -119,7 +112,11 @@ void main() {
   test('unstamped real sheet reads as fully blank', () {
     final bytes = File('test/fixtures/variant-001-page1.png').readAsBytesSync();
     final sheet = img.decodePng(bytes)!;
-    final result = detectMarks(cropToCapture(sheet), rows: 10, optionsPerQuestion: 4);
+    final result = detectMarks(
+      cropToGuideFraction(sheet, captureFractionOfPage()),
+      rows: 10,
+      optionsPerQuestion: 4,
+    );
     expect(result.needsReview, isFalse);
     expect(result.rows.every((r) => r.status == RowStatus.blank), isTrue);
   });

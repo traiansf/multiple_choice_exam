@@ -156,4 +156,15 @@ void main() {
       expect(framingHintFor(StateError('boom')), contains('flat'));
     });
   });
+
+  test('captureFractionOfPage pins top, height, left, width', () {
+    // top = captureTopMm / pageHeightMm = 45 / 297
+    // height = captureHeightMm / pageHeightMm = 212 / 297
+    // left = 0, width = 1
+    final f = captureFractionOfPage();
+    expect(f.left, closeTo(0, 1e-9));
+    expect(f.width, closeTo(1, 1e-9));
+    expect(f.top, closeTo(45 / 297, 1e-9));
+    expect(f.height, closeTo(212 / 297, 1e-9));
+  });
 }

@@ -114,6 +114,16 @@ String? exposureHint(img.Image photo, {int step = 8}) {
   return null;
 }
 
+/// The capture band expressed as a fraction of a full-page image — for
+/// cropping a whole-page raster (fixture, flatbed scan) the way the camera
+/// guide crop frames a photo.
+Rect captureFractionOfPage() => Rect.fromLTWH(
+  0,
+  geom.captureTopMm / geom.pageHeightMm,
+  1,
+  geom.captureHeightMm / geom.pageHeightMm,
+);
+
 /// Translates a detection failure into actionable framing guidance.
 String framingHintFor(Object error) {
   if (error is OmrException) {
