@@ -157,6 +157,11 @@ void main() {
     });
   });
 
+  test('defaultFramingHint mentions the black square (copy contract)', () {
+    expect(defaultFramingHint, contains('black square'));
+    expect(defaultFramingHint, contains('answer area'));
+  });
+
   test('captureFractionOfPage pins top, height, left, width', () {
     // top = captureTopMm / pageHeightMm = 45 / 297
     // height = captureHeightMm / pageHeightMm = 212 / 297

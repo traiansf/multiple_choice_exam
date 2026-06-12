@@ -114,6 +114,13 @@ String? exposureHint(img.Image photo, {int step = 8}) {
   return null;
 }
 
+/// Default hint shown by the overlay when there is no framing error.
+/// Kept here so it lives alongside [framingHintFor] and copy changes stay in
+/// one place.
+const String defaultFramingHint =
+    'Hold the phone flat above the sheet. Fit the answer area'
+    ' in the frame and put each black square in its bracket.';
+
 /// The capture band expressed as a fraction of a full-page image — for
 /// cropping a whole-page raster (fixture, flatbed scan) the way the camera
 /// guide crop frames a photo.

@@ -26,10 +26,7 @@ class SheetGuideOverlay extends StatelessWidget {
           child: Padding(
             padding: const EdgeInsets.all(16),
             child: Text(
-              hint ??
-                  'Hold the phone flat above the sheet. Fit the answer area'
-                      ' in the frame and put each black square in its'
-                      ' bracket.',
+              hint ?? defaultFramingHint,
               textAlign: TextAlign.center,
               style: const TextStyle(
                 color: Colors.white,
