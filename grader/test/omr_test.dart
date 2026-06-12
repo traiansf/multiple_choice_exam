@@ -200,12 +200,23 @@ void main() {
   });
 
   test('marks detected despite header ink near the top windows and offset', () {
+    // The name-line stripe (x 8..90mm, capture-y 2.5..4.25mm, 1.75mm tall)
+    // places ~376 dark pixels inside the TL coarse window at y≈3.4mm, biasing
+    // the coarse centroid ~2.9mm above the true mark centre (y=11mm).
+    // Without refinement the TL corner is detected at y≈8mm, shifting the
+    // sampled bubble row 0 by ~2mm and dropping the fill ratio to ≈0.41,
+    // which is below the 0.45 filled threshold → the row would be classified as
+    // ambiguous/blank, failing the test.  With refinement the fine window
+    // (±5.4mm around the biased coarse at y≈8mm) still captures most of the
+    // mark; the mark's ~600-px mass outweighs the ~273-px ink overlap in the
+    // fine window, pulling the fine centroid to y≈8.5mm → bubble error ≈1.7mm
+    // → fill ratio ≈0.54 → correctly marked.
+    // See buildSheetImage doc for the full geometry derivation.
     final sheet = buildSheetImage(
       rows: 5,
       optionsPerQuestion: 4,
       filledByRow: {0: [2]},
       drawHeaderInk: true,
-      offsetMm: (x: 3, y: 3),
     );
     final result = detectMarks(sheet, rows: 5, optionsPerQuestion: 4);
     expect(result.rows[0].mark, 2);
