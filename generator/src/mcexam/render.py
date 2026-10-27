@@ -184,11 +184,12 @@ def render_variant(
     path: Path,
     exam: Exam,
     plan: VariantPlan,
-    qr_png_bytes: bytes,
+    qr_png_bytes: bytes | None,
     variant_id: int,
     lang: str = DEFAULT_LANG,
 ) -> int:
-    """Write the variant PDF; returns the page count."""
+    """Write the variant PDF; returns the page count. Without a QR image
+    (a sample sheet, see --no-shuffle) the QR spaces stay empty."""
     if lang not in LABELS:
         raise ValueError(f"unknown sheet language {lang!r}; known: {', '.join(LABELS)}")
     labels = LABELS[lang]
@@ -220,19 +221,20 @@ def _draw_answer_sheet(
     variant_id: int,
     rows: int,
     m: int,
-    qr_png_bytes: bytes,
+    qr_png_bytes: bytes | None,
     font: str,
     labels: dict[str, str],
 ) -> None:
     for x, y in registration_mark_positions():
         canvas.rect(x, y, REG_SIZE, REG_SIZE, stroke=0, fill=1)
-    canvas.drawImage(
-        ImageReader(io.BytesIO(qr_png_bytes)),
-        PAGE_W - MARGIN - QR_SIZE,
-        PAGE_H - QR_TOP - QR_SIZE,
-        QR_SIZE,
-        QR_SIZE,
-    )
+    if qr_png_bytes is not None:
+        canvas.drawImage(
+            ImageReader(io.BytesIO(qr_png_bytes)),
+            PAGE_W - MARGIN - QR_SIZE,
+            PAGE_H - QR_TOP - QR_SIZE,
+            QR_SIZE,
+            QR_SIZE,
+        )
     # Keep the title clear of the QR region: wrap into the space left of it,
     # at most two lines, ellipsize the rest.
     title_width = PAGE_W - 2 * MARGIN - QR_SIZE - 6 * mm
@@ -268,24 +270,25 @@ def _draw_questions(
     plan: VariantPlan,
     variant_id: int,
     font: str,
-    qr_png_bytes: bytes,
+    qr_png_bytes: bytes | None,
     labels: dict[str, str],
 ) -> None:
     width = PAGE_W - 2 * MARGIN
-    qr_image = ImageReader(io.BytesIO(qr_png_bytes))
+    qr_image = None if qr_png_bytes is None else ImageReader(io.BytesIO(qr_png_bytes))
     y = PAGE_H - MARGIN
 
     def page_header() -> None:
         """Issue #9: every question page re-identifies its variant — header
         text plus a small QR top-right — so separated pages stay gradable."""
         nonlocal y
-        canvas.drawImage(
-            qr_image,
-            PAGE_W - MARGIN - QUESTION_PAGE_QR_SIZE,
-            PAGE_H - MARGIN - QUESTION_PAGE_QR_SIZE,
-            QUESTION_PAGE_QR_SIZE,
-            QUESTION_PAGE_QR_SIZE,
-        )
+        if qr_image is not None:
+            canvas.drawImage(
+                qr_image,
+                PAGE_W - MARGIN - QUESTION_PAGE_QR_SIZE,
+                PAGE_H - MARGIN - QUESTION_PAGE_QR_SIZE,
+                QUESTION_PAGE_QR_SIZE,
+                QUESTION_PAGE_QR_SIZE,
+            )
         header_width = PAGE_W - 2 * MARGIN - QUESTION_PAGE_QR_SIZE - 4 * mm
         canvas.setFont(font, 14)
         canvas.drawString(
@@ -361,6 +364,8 @@ def _question_groups(exam: Exam, plan: VariantPlan, font: str) -> list[list[Flow
     units = exam.units_by_key()
 
     groups: list[list[Flowable]] = []
+    if exam.preamble:
+        groups.append([*stems.blocks(exam.preamble), spacer(10)])
     previous_unit: tuple[str, int] | None = None
     for number, sheet_question in enumerate(plan.sheet, start=1):
         unit = units[sheet_question.section][sheet_question.unit_index]

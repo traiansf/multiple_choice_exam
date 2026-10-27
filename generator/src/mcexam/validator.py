@@ -113,7 +113,7 @@ def validate(raw: RawExam) -> Exam:
             else:
                 units.append(Unit(questions=(_question(unit),)))
         parts.append(Section(name=section.name, units=tuple(units)))
-    return Exam(title=raw.titles[0][1], parts=tuple(parts))
+    return Exam(title=raw.titles[0][1], parts=tuple(parts), preamble=raw.preamble)
 
 
 def load_exam(text: str) -> Exam:

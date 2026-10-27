@@ -50,6 +50,7 @@ class Section:
 class Exam:
     title: str
     parts: tuple[Section, ...]  # in source order
+    preamble: str = ""  # Markdown printed before the first question
 
     @property
     def legacy(self) -> bool:

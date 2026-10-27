@@ -2,7 +2,9 @@
 
 A '###' heading opens either a standalone question (options follow directly)
 or a case: stem lines (any Markdown except headings and option items),
-then '####' questions with their options.
+then '####' questions with their options. Markdown between the '#' title and
+the first '##' section is the preamble (instructions printed before the
+questions), with the same restrictions as a stem.
 """
 
 import re
@@ -61,6 +63,11 @@ class RawSection:
 class RawExam:
     titles: list[tuple[int, str]] = field(default_factory=list)
     sections: list[RawSection] = field(default_factory=list)
+    preamble_lines: list[str] = field(default_factory=list)
+
+    @property
+    def preamble(self) -> str:
+        return "\n".join(self.preamble_lines).strip("\n")
 
 
 _OPTION_RE = re.compile(r"^- \[( |x|X)\] (.*\S.*)$")
@@ -96,9 +103,12 @@ def parse(text: str) -> RawExam:
         line = raw_line.rstrip()
         option = _OPTION_RE.match(line)
         in_stem = (pending is not None or case is not None) and question is None
+        in_preamble = section is None and bool(exam.titles)
         if not line:
             if case is not None and question is None:
                 case.stem_lines.append("")
+            elif in_preamble:
+                exam.preamble_lines.append("")
             continue
         if line.startswith("#### "):
             if pending is None and case is None:
@@ -143,12 +153,17 @@ def parse(text: str) -> RawExam:
             if pending is not None:
                 open_case(line_no)
             case.stem_lines.append(line)
+        elif in_preamble:
+            if line.lstrip().startswith("#"):
+                raise ParseError(line_no, "headings are not allowed in the preamble")
+            exam.preamble_lines.append(line)
         else:
             raise ParseError(
                 line_no,
                 f"unrecognized content: {line!r}"
                 " (expected a heading, '- [ ] option', or blank line;"
-                " free text belongs in a case stem, between a '###' case"
+                " free text belongs in the preamble, between the '#' title and the"
+                " first '##' section, or in a case stem, between a '###' case"
                 " heading and its first '####' question)",
             )
     flush_pending()

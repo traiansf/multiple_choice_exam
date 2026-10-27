@@ -48,6 +48,8 @@ def _question_lines(heading: str, question: Question) -> list[str]:
 
 def to_markdown(exam: Exam) -> str:
     lines = [f"# {exam.title}"]
+    if exam.preamble:
+        lines += ["", exam.preamble]
     for part in exam.parts:
         lines += ["", f"## {part.name}"]
         for unit in part.units:

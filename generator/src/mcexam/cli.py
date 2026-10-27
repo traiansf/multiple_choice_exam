@@ -11,7 +11,7 @@ from .parser import ParseError
 from .qr import QrPayload, QrPayloadV2, encode_payload, qr_png
 from .render import DEFAULT_LANG, LABELS, render_variant
 from .scramble import scramble_exam, to_markdown
-from .select import build_plan, variant_seeds
+from .select import build_plan, source_order_plan, variant_seeds
 from .validator import ValidationError, load_exam
 
 
@@ -146,6 +146,13 @@ def _parse_count_specs(exam: Exam, specs: tuple[str, ...]) -> dict[str, int]:
     show_default=True,
 )
 @click.option(
+    "--no-shuffle",
+    is_flag=True,
+    help="Sample sheet: the first N units of every section in source order,"
+    " options unshuffled, no QR code and no answer-key.json. Not gradable;"
+    " requires --variants 1.",
+)
+@click.option(
     "--lang",
     type=click.Choice(sorted(LABELS)),
     default=DEFAULT_LANG,
@@ -162,6 +169,7 @@ def generate(
     count_specs: tuple[str, ...],
     base_seed: int | None,
     out_dir: Path,
+    no_shuffle: bool,
     lang: str,
 ) -> None:
     """Generate variant PDFs and answer-key.json."""
@@ -187,14 +195,21 @@ def generate(
             raise click.ClickException(
                 f"requested {counts[key]} {key} {what} but '{input_path}' has only {available}"
             )
-    if base_seed is None:
-        base_seed = secrets.randbits(64)
-    click.echo(f"base seed: {base_seed}")
-
+    if no_shuffle and (variants != 1 or base_seed is not None):
+        raise click.UsageError("--no-shuffle makes one sample sheet: no --variants or --base-seed")
     try:
         out_dir.mkdir(parents=True, exist_ok=True)
     except (FileExistsError, NotADirectoryError) as exc:
         raise click.ClickException(f"--out {out_dir} exists and is not a directory") from exc
+    if no_shuffle:
+        plan = source_order_plan(unit_sizes, counts, exam.options_per_question)
+        render_variant(out_dir / "sample.pdf", exam, plan, None, 1, lang)
+        click.echo(f"wrote sample.pdf (not gradable) to {out_dir}/")
+        return
+
+    if base_seed is None:
+        base_seed = secrets.randbits(64)
+    click.echo(f"base seed: {base_seed}")
     fingerprint = source_fingerprint(text)
     write_key(out_dir / "answer-key.json", exam, fingerprint)
     for variant_id, seed in enumerate(variant_seeds(base_seed, variants), start=1):

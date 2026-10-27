@@ -11,7 +11,7 @@ from mcexam.parser import ParseError, parse
 from mcexam.qr import QrPayloadV2, decode_payload, encode_payload, qr_png
 from mcexam.render import render_variant
 from mcexam.scramble import scramble_exam, to_markdown
-from mcexam.select import build_plan
+from mcexam.select import build_plan, source_order_plan
 from mcexam.validator import ValidationError, load_exam
 
 CASE_MD = """\
@@ -288,3 +288,60 @@ def test_cli_generate_romanian_labels(tmp_path) -> None:
     bad = CliRunner().invoke(main, [*args, "--lang", "xx", "--out", str(tmp_path / "xx")])
     assert bad.exit_code != 0
     assert "xx" in bad.output
+
+
+PREAMBLE_MD = CASE_MD.replace(
+    "# Case Exam\n",
+    "# Case Exam\n\nAnswer **every** question.\n\n- 60 minutes\n- no notes\n",
+)
+
+
+def test_preamble_is_kept_and_round_trips() -> None:
+    exam = load_exam(PREAMBLE_MD)
+    assert exam.preamble == "Answer **every** question.\n\n- 60 minutes\n- no notes"
+    assert load_exam(to_markdown(exam)).preamble == exam.preamble
+    assert load_exam(CASE_MD).preamble == ""
+
+
+def test_heading_in_preamble_is_error() -> None:
+    with pytest.raises(ParseError, match="preamble"):
+        parse("# T\n\n##### not here\n\n## S\n")
+
+
+def test_render_preamble(tmp_path) -> None:
+    exam = load_exam(PREAMBLE_MD)
+    plan = build_plan(5, exam.unit_sizes(), {"Modeling": 2, "Contracts": 2}, 4)
+    out = tmp_path / "preamble.pdf"
+    render_variant(out, exam, plan, qr_png("v2|1|5|deadbeef|2,2"), 1)
+    assert out.read_bytes().startswith(b"%PDF")
+
+
+def test_source_order_plan_keeps_source_order() -> None:
+    exam = load_exam(CASE_MD)
+    plan = source_order_plan(exam.unit_sizes(), {"Modeling": 2, "Contracts": 1}, 4)
+    assert [(q.section, q.index_in_section, q.global_index) for q in plan.sheet] == [
+        ("Modeling", 0, 0),
+        ("Modeling", 1, 1),
+        ("Modeling", 2, 2),
+        ("Contracts", 0, 3),
+    ]
+    assert all(q.option_perm == (0, 1, 2, 3) for q in plan.sheet)
+
+
+def test_cli_no_shuffle_writes_one_sample(tmp_path) -> None:
+    out = tmp_path / "sample"
+    args = [
+        "generate",
+        "--input",
+        str(write_case_exam(tmp_path)),
+        "--count",
+        "Modeling=2",
+        "--count",
+        "Contracts=2",
+    ]
+    result = CliRunner().invoke(main, [*args, "--no-shuffle", "--out", str(out)])
+    assert result.exit_code == 0, result.output
+    assert sorted(p.name for p in out.iterdir()) == ["sample.pdf"]
+    many = CliRunner().invoke(main, [*args, "--no-shuffle", "--variants", "2"])
+    assert many.exit_code != 0
+    assert "--no-shuffle" in many.output

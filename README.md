@@ -115,6 +115,10 @@ Because the correct answer is marked inline, a Markdown file is *self-documentin
 Prompts and options may use inline Markdown (`**bold**`, `*italic*`,
 `` `code` ``); each stays on its heading or list-item line.
 
+Text between the `#` title and the first `##` section is the **preamble**:
+instructions printed once, at the top of the first question page. It takes the
+same Markdown as a case stem (no headings, no `- [ ]` items).
+
 ### Shared stems (cases) and named sections
 
 Several questions can share one stem — a scenario, a table, a code excerpt.
@@ -248,6 +252,14 @@ The sheet then lists the sections in source order; the number of answer rows
 is the total number of questions in the drawn units. `--count` also works for
 an Easy/Medium/Hard file (`--count Easy=10 ...`) and cannot be combined with
 the per-difficulty flags.
+
+**Sample sheet.** `--no-shuffle` writes a single `sample.pdf` instead: the
+first `N` units of every section in source order (with `--count`, or the
+per-difficulty flags), options in source order, so the letters match a key
+written for the source file. It has no QR code and no `answer-key.json` is
+written: no seed reproduces it, so it cannot be graded. Use it to publish a
+practice paper that looks like the real sheets; it cannot be combined with
+`--variants` or `--base-seed`.
 
 **Sheet language.** `--lang` sets the language of the few fixed words the
 tool prints itself — the name line and the variant number on the answer

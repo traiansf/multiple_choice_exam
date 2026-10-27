@@ -77,6 +77,40 @@ def build_plan(
     return VariantPlan(seed=seed, selections=selections, sheet=tuple(sheet))
 
 
+def source_order_plan(
+    units: Mapping[str, Sequence[int]],
+    counts: Mapping[str, int],
+    options_per_question: int,
+) -> VariantPlan:
+    """The first counts[key] units of every section, in source order, with
+    unshuffled options: a sample sheet that matches the source and its key
+    letters. No seed reproduces it, so it is not gradable."""
+    for key, sizes in units.items():
+        if not 0 <= counts[key] <= len(sizes):
+            raise ValueError(
+                f"requested {counts[key]} '{key}' units but the section has only {len(sizes)}"
+            )
+    selections = {key: tuple(range(counts[key])) for key in units}
+    sheet: list[SheetQuestion] = []
+    section_offset = 0
+    for key, sizes in units.items():
+        index = 0
+        for unit in selections[key]:
+            for _ in range(sizes[unit]):
+                sheet.append(
+                    SheetQuestion(
+                        section=key,
+                        index_in_section=index,
+                        global_index=section_offset + index,
+                        option_perm=tuple(range(options_per_question)),
+                        unit_index=unit,
+                    )
+                )
+                index += 1
+        section_offset += sum(sizes)
+    return VariantPlan(seed=0, selections=selections, sheet=tuple(sheet))
+
+
 def build_variant(
     seed: int,
     section_sizes: Mapping[str, int],
