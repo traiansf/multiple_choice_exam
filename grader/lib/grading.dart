@@ -55,6 +55,34 @@ class GradeResult {
   final List<QuestionResult> perQuestion;
 }
 
+/// Replays the variant of [payload] against [key]. Throws GradingException
+/// when the QR does not fit the key (format version, section count, or more
+/// units than a section has).
+VariantPlan planFor(AnswerKey key, QrPayload payload) {
+  if (payload.keyVersion != key.version) {
+    throw GradingException(
+      'QR format ${payload.version} does not match key file version'
+      ' ${key.version}',
+    );
+  }
+  try {
+    return buildPlan(
+      seed: payload.seed,
+      units: key.units,
+      counts: payload.countsFor(key.sectionKeys),
+      optionsPerQuestion: key.optionsPerQuestion,
+    );
+  } on QrPayloadException catch (error) {
+    throw GradingException(
+      'QR counts are inconsistent with the key file: ${error.message}',
+    );
+  } on ArgumentError catch (error) {
+    throw GradingException(
+      'QR counts are inconsistent with the key file: ${error.message}',
+    );
+  }
+}
+
 GradeResult grade({
   required AnswerKey key,
   required QrPayload payload,
@@ -67,19 +95,7 @@ GradeResult grade({
       ' from a different exam source',
     );
   }
-  final VariantPlan plan;
-  try {
-    plan = buildVariant(
-      seed: payload.seed,
-      sectionSizes: key.sections,
-      counts: payload.counts,
-      optionsPerQuestion: key.optionsPerQuestion,
-    );
-  } on ArgumentError catch (error) {
-    throw GradingException(
-      'QR counts are inconsistent with the key file: ${error.message}',
-    );
-  }
+  final plan = planFor(key, payload);
   if (marks.length != plan.sheet.length) {
     throw GradingException(
       'expected ${plan.sheet.length} marks but got ${marks.length}',

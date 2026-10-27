@@ -6,12 +6,12 @@ from pathlib import Path
 import click
 
 from .keyfile import source_fingerprint, write_key
-from .model import SECTION_KEYS, Exam
+from .model import Exam
 from .parser import ParseError
-from .qr import QrPayload, encode_payload, qr_png
+from .qr import QrPayload, QrPayloadV2, encode_payload, qr_png
 from .render import render_variant
 from .scramble import scramble_exam, to_markdown
-from .select import build_variant, variant_seeds
+from .select import build_plan, variant_seeds
 from .validator import ValidationError, load_exam
 
 
@@ -71,11 +71,50 @@ def main() -> None:
 def lint(input_path: Path) -> None:
     """Validate an exam Markdown file."""
     _, exam = _load(input_path)
-    sizes = exam.section_sizes()
-    click.echo(
-        f"OK: '{exam.title}' — easy {sizes['easy']}, medium {sizes['medium']},"
-        f" hard {sizes['hard']}, {exam.options_per_question} options per question"
+    if exam.legacy:
+        sizes = exam.section_sizes()
+        click.echo(
+            f"OK: '{exam.title}' — easy {sizes['easy']}, medium {sizes['medium']},"
+            f" hard {sizes['hard']}, {exam.options_per_question} options per question"
+        )
+        return
+    parts = ", ".join(
+        f"{key} {len(sizes)} unit(s) / {sum(sizes)} question(s)"
+        for key, sizes in exam.unit_sizes().items()
     )
+    click.echo(f"OK: '{exam.title}' — {parts}, {exam.options_per_question} options per question")
+
+
+def _parse_count_specs(exam: Exam, specs: tuple[str, ...]) -> dict[str, int]:
+    """--count NAME=N, by section name as written in the file ('Easy' for the
+    legacy section key 'easy')."""
+    key_by_name = {
+        part.name: key for key, part in zip(exam.section_keys, exam.ordered_parts, strict=True)
+    }
+    counts: dict[str, int] = {}
+    for spec in specs:
+        name, sep, value = spec.rpartition("=")
+        if not sep or not name:
+            raise click.UsageError(f"--count {spec!r}: expected NAME=N")
+        if name not in key_by_name:
+            raise click.UsageError(
+                f"--count {spec!r}: no section named {name!r} (sections: {', '.join(key_by_name)})"
+            )
+        if not value.isdigit():
+            raise click.UsageError(f"--count {spec!r}: N must be a non-negative integer")
+        key = key_by_name[name]
+        if key in counts:
+            raise click.UsageError(f"--count given twice for section {name!r}")
+        counts[key] = int(value)
+    missing = [name for name, key in key_by_name.items() if key not in counts]
+    if missing:
+        raise click.UsageError(
+            "every section needs a count; missing: "
+            + ", ".join(f"--count '{name}=N'" for name in missing)
+        )
+    if sum(counts.values()) == 0:
+        raise click.UsageError("at least one question must be requested")
+    return counts
 
 
 @main.command()
@@ -85,6 +124,14 @@ def lint(input_path: Path) -> None:
 @click.option("--medium", type=click.IntRange(min=0), default=None)
 @click.option("--hard", type=click.IntRange(min=0), default=None)
 @click.option("--questions", type=click.IntRange(min=1), default=None)
+@click.option(
+    "--count",
+    "count_specs",
+    multiple=True,
+    metavar="NAME=N",
+    help="Units (questions or cases) to draw from the section NAME; repeat for"
+    " every section. Required for exams with cases or other section names.",
+)
 @click.option(
     "--base-seed",
     type=click.IntRange(min=0, max=2**64 - 1),
@@ -105,17 +152,32 @@ def generate(
     medium: int | None,
     hard: int | None,
     questions: int | None,
+    count_specs: tuple[str, ...],
     base_seed: int | None,
     out_dir: Path,
 ) -> None:
     """Generate variant PDFs and answer-key.json."""
     text, exam = _load(input_path)
-    counts = _resolve_counts(easy, medium, hard, questions)
-    sizes = exam.section_sizes()
-    for key in SECTION_KEYS:
-        if counts[key] > sizes[key]:
+    legacy_flags = (easy, medium, hard, questions)
+    if count_specs:
+        if any(value is not None for value in legacy_flags):
+            raise click.UsageError(
+                "--count cannot be combined with --easy/--medium/--hard/--questions"
+            )
+        counts = _parse_count_specs(exam, count_specs)
+    elif exam.legacy:
+        counts = _resolve_counts(easy, medium, hard, questions)
+    else:
+        raise click.UsageError(
+            "this exam has cases or named sections: give --count 'NAME=N' for every section"
+        )
+    unit_sizes = exam.unit_sizes()
+    for key in exam.section_keys:
+        available = len(unit_sizes[key])
+        if counts[key] > available:
+            what = "questions" if exam.legacy else "units"
             raise click.ClickException(
-                f"requested {counts[key]} {key} questions but '{input_path}' has only {sizes[key]}"
+                f"requested {counts[key]} {key} {what} but '{input_path}' has only {available}"
             )
     if base_seed is None:
         base_seed = secrets.randbits(64)
@@ -128,9 +190,9 @@ def generate(
     fingerprint = source_fingerprint(text)
     write_key(out_dir / "answer-key.json", exam, fingerprint)
     for variant_id, seed in enumerate(variant_seeds(base_seed, variants), start=1):
-        plan = build_variant(seed, sizes, counts, exam.options_per_question)
-        payload = encode_payload(
-            QrPayload(
+        plan = build_plan(seed, unit_sizes, counts, exam.options_per_question)
+        if exam.legacy:
+            qr_payload = QrPayload(
                 variant_id=variant_id,
                 seed=seed,
                 n_easy=counts["easy"],
@@ -138,9 +200,19 @@ def generate(
                 n_hard=counts["hard"],
                 source_fingerprint=fingerprint,
             )
-        )
+        else:
+            qr_payload = QrPayloadV2(
+                variant_id=variant_id,
+                seed=seed,
+                counts=tuple(counts[key] for key in exam.section_keys),
+                source_fingerprint=fingerprint,
+            )
         render_variant(
-            out_dir / f"variant-{variant_id:03d}.pdf", exam, plan, qr_png(payload), variant_id
+            out_dir / f"variant-{variant_id:03d}.pdf",
+            exam,
+            plan,
+            qr_png(encode_payload(qr_payload)),
+            variant_id,
         )
     click.echo(f"wrote {variants} variant(s) + answer-key.json to {out_dir}/")
 

@@ -7,15 +7,20 @@ the wild.
 """
 
 import io
+import os
 from pathlib import Path
 
 from reportlab.lib.pagesizes import A4
+from reportlab.lib.styles import ParagraphStyle
 from reportlab.lib.units import mm
 from reportlab.lib.utils import ImageReader, simpleSplit
 from reportlab.pdfbase import pdfmetrics
+from reportlab.pdfbase.pdfmetrics import registerFontFamily
 from reportlab.pdfbase.ttfonts import TTFont
 from reportlab.pdfgen.canvas import Canvas
+from reportlab.platypus import Flowable, Frame, Paragraph
 
+from .markup import StemRenderer, inline_markup, spacer
 from .model import Exam
 from .select import VariantPlan
 
@@ -61,11 +66,20 @@ QR_SIZE = 28 * mm  # side length of the answer-sheet QR image
 
 OPTION_LETTERS = "ABCDEFGHIJ"
 
-_FONT_PATHS = (
-    "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
-    "/usr/share/fonts/TTF/DejaVuSans.ttf",
-    "/usr/share/fonts/dejavu/DejaVuSans.ttf",
+# Directories searched for the DejaVu family (full Unicode, including
+# diacritics and math symbols); MCEXAM_FONT_DIR, if set, comes first.
+_FONT_DIRS = (
+    "/usr/share/fonts/truetype/dejavu",
+    "/usr/share/fonts/TTF",
+    "/usr/share/fonts/dejavu",
 )
+_FONT_FILES = {
+    "ExamBody": "DejaVuSans.ttf",
+    "ExamBody-Bold": "DejaVuSans-Bold.ttf",
+    "ExamBody-Italic": "DejaVuSans-Oblique.ttf",
+    "ExamBody-BoldItalic": "DejaVuSans-BoldOblique.ttf",
+    "ExamMono": "DejaVuSansMono.ttf",
+}
 
 
 def block_width(options_per_question: int) -> float:
@@ -125,15 +139,37 @@ def clamp_line(text: str, font: str, size: float, width: float) -> str:
     return trimmed + " …"
 
 
+def _font_dirs() -> list[Path]:
+    override = os.environ.get("MCEXAM_FONT_DIR")
+    return ([Path(override)] if override else []) + [Path(d) for d in _FONT_DIRS]
+
+
 def _body_font() -> str:
-    """DejaVu Sans if available (full Unicode for math symbols), else Helvetica."""
+    """DejaVu Sans if available (full Unicode for math symbols), else Helvetica.
+    Registers the bold/italic/mono companions used by the question pages."""
     if "ExamBody" in pdfmetrics.getRegisteredFontNames():
         return "ExamBody"
-    for path in _FONT_PATHS:
-        if Path(path).exists():
-            pdfmetrics.registerFont(TTFont("ExamBody", path))
-            return "ExamBody"
+    for directory in _font_dirs():
+        if not (directory / _FONT_FILES["ExamBody"]).exists():
+            continue
+        for name, file in _FONT_FILES.items():
+            found = directory / file
+            # A missing companion falls back to the regular face.
+            source = found if found.exists() else directory / _FONT_FILES["ExamBody"]
+            pdfmetrics.registerFont(TTFont(name, str(source)))
+        registerFontFamily(
+            "ExamBody",
+            normal="ExamBody",
+            bold="ExamBody-Bold",
+            italic="ExamBody-Italic",
+            boldItalic="ExamBody-BoldItalic",
+        )
+        return "ExamBody"
     return "Helvetica"
+
+
+def _mono_font(body: str) -> str:
+    return "ExamMono" if body == "ExamBody" else "Courier"
 
 
 def render_variant(
@@ -240,28 +276,82 @@ def _draw_questions(
         # Content starts below whichever is taller: the QR or the header.
         y = PAGE_H - MARGIN - QUESTION_PAGE_QR_SIZE - 8
 
-    def ensure_space(needed: float) -> None:
-        nonlocal y
-        if y - needed < MARGIN:
+    page_header()
+    frame = _new_frame(y)
+    for group in _question_groups(exam, plan, font):
+        height = sum(_height(f, width, canvas) for f in group)
+        if height > _available(frame) and not frame._atTop:
             canvas.showPage()
             page_header()
+            frame = _new_frame(y)
+        pending = list(group)
+        while pending:
+            flowable = pending[0]
+            if frame.add(flowable, canvas):
+                pending.pop(0)
+                continue
+            pieces = frame.split(flowable, canvas)
+            if len(pieces) > 1 and frame.add(pieces[0], canvas):
+                pending[0:1] = pieces[1:]
+            elif frame._atTop:
+                raise ValueError("a question or case stem block is taller than a page")
+            canvas.showPage()
+            page_header()
+            frame = _new_frame(y)
 
-    page_header()
 
+def _new_frame(top: float) -> Frame:
+    return Frame(
+        MARGIN,
+        MARGIN,
+        PAGE_W - 2 * MARGIN,
+        top - MARGIN,
+        leftPadding=0,
+        rightPadding=0,
+        topPadding=0,
+        bottomPadding=0,
+    )
+
+
+def _available(frame: Frame) -> float:
+    return frame._y - frame._y1p
+
+
+def _height(flowable: Flowable, width: float, canvas: Canvas) -> float:
+    _, height = flowable.wrapOn(canvas, width, PAGE_H)
+    return height + flowable.getSpaceBefore() + flowable.getSpaceAfter()
+
+
+def _question_groups(exam: Exam, plan: VariantPlan, font: str) -> list[list[Flowable]]:
+    """Flowables per block that should start on one page: each standalone
+    question; for a case, its title and stem together with its first question,
+    then each further question."""
+    mono = _mono_font(font)
+    prompt_style = ParagraphStyle("prompt", fontName=font, fontSize=11, leading=14)
+    option_style = ParagraphStyle(
+        "option", fontName=font, fontSize=11, leading=13, leftIndent=8 * mm
+    )
+    case_title = ParagraphStyle("case-title", fontName=font, fontSize=12, leading=15, spaceAfter=4)
+    stem_style = ParagraphStyle("stem", fontName=font, fontSize=11, leading=14, spaceAfter=4)
+    stems = StemRenderer(stem_style, mono)
+    units = exam.units_by_key()
+
+    groups: list[list[Flowable]] = []
+    previous_unit: tuple[str, int] | None = None
     for number, sheet_question in enumerate(plan.sheet, start=1):
+        unit = units[sheet_question.section][sheet_question.unit_index]
         question = exam.sections[sheet_question.section][sheet_question.index_in_section]
-        prompt_lines = simpleSplit(f"{number}. {question.prompt}", font, 11, width)
-        option_lines: list[str] = []
+        group: list[Flowable] = []
+        current_unit = (sheet_question.section, sheet_question.unit_index)
+        if unit.case is not None and current_unit != previous_unit:
+            group.append(Paragraph(f"<b>{inline_markup(unit.case.title, mono)}</b>", case_title))
+            group += stems.blocks(unit.case.stem)
+            group.append(spacer(4))
+        previous_unit = current_unit
+        group.append(Paragraph(f"{number}. {inline_markup(question.prompt, mono)}", prompt_style))
         for position, original_index in enumerate(sheet_question.option_perm):
-            text = f"{OPTION_LETTERS[position]}) {question.options[original_index]}"
-            option_lines.extend(simpleSplit(text, font, 11, width - 8 * mm))
-        needed = 14 * len(prompt_lines) + 13 * len(option_lines) + 10
-        ensure_space(needed)
-        canvas.setFont(font, 11)
-        for line in prompt_lines:
-            canvas.drawString(MARGIN, y - 11, line)
-            y -= 14
-        for line in option_lines:
-            canvas.drawString(MARGIN + 8 * mm, y - 11, line)
-            y -= 13
-        y -= 10
+            text = inline_markup(question.options[original_index], mono)
+            group.append(Paragraph(f"{OPTION_LETTERS[position]}) {text}", option_style))
+        group.append(spacer(10))
+        groups.append(group)
+    return groups

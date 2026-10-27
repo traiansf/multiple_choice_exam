@@ -94,7 +94,8 @@ A valid exam file is ordinary, renderable Markdown:
 - [ ] π
 ```
 
-Rules (enforced by `mcexam lint`):
+Rules (enforced by `mcexam lint`; see the next section for cases and named
+sections, which relax rule 2):
 
 1. **Exactly one `#` title** — the exam name, first heading in the file.
 2. **Sections are `##` headings** named exactly `Easy`, `Medium`, and `Hard`.
@@ -110,6 +111,63 @@ Rules (enforced by `mcexam lint`):
 
 Because the correct answer is marked inline, a Markdown file is *self-documenting*
 — which is why `scramble` (below) needs no separate key file.
+
+Prompts and options may use inline Markdown (`**bold**`, `*italic*`,
+`` `code` ``); each stays on its heading or list-item line.
+
+### Shared stems (cases) and named sections
+
+Several questions can share one stem — a scenario, a table, a code excerpt.
+Such a group is a **case**: a `###` heading with the case title, then the stem
+(any Markdown except headings and `- [ ]`/`- [x]` items: paragraphs, lists,
+pipe tables, code blocks, quotes), then the case's questions as `####`
+headings with their options. A `###` heading followed directly by options is
+still a standalone question, and both can be mixed in a section.
+
+```markdown
+# Software Design — Final
+
+## Requirements
+
+### Case: a lending library
+
+| Rule | Text |
+|------|------|
+| R1 | A returned copy is reserved for the oldest pending request. |
+| R2 | Only the requester may pick up the reserved copy. |
+
+#### A copy is returned while two requests are pending. Which one gets it?
+- [ ] The most recent one
+- [x] The oldest one
+- [ ] Whichever member arrives first
+- [ ] Neither
+
+#### Another member tries to pick up the reserved copy. What happens?
+- [ ] The pickup succeeds
+- [x] The pickup is refused
+- [ ] The reservation is cancelled
+- [ ] The request is closed
+
+### Which kind of requirement is "searches answer within 2 seconds"?
+- [ ] Functional
+- [ ] Domain rule
+- [x] Quality attribute
+- [ ] Constraint
+```
+
+A file with a case, or with any section name other than `Easy`/`Medium`/`Hard`,
+uses **named sections**: any non-empty, distinct `##` names, kept in source
+order, each with at least one question or case. Selection draws whole
+**units** — a standalone question or a case — so a case's questions always
+appear together, in source order, under its title and stem; only their
+options are shuffled. Variants differ in which units they draw, in the order
+of the units within each section, and in the option order. Options must not
+refer to one another by letter or position ("all of the above", "A and B"),
+since the letters change in every variant. See `examples/case-exam.md`.
+
+Files with only `Easy`/`Medium`/`Hard` and no cases are unchanged: same rules,
+same `--easy/--medium/--hard/--questions` flags, same key file and QR (v1), so
+existing PDFs stay gradable.
 
 ---
 
@@ -177,10 +235,25 @@ If `--easy/--medium/--hard` are given they define `n`; if `--questions` is also
 given it must equal their sum. Requesting more questions than a section contains
 is an error.
 
+For an exam with cases or named sections, give the number of **units**
+(standalone questions or whole cases) to draw from every section with a
+repeatable `--count NAME=N`, using the section name as written after `##`:
+
+```bash
+mcexam generate --input examples/case-exam.md --variants 30 \
+    --count Requirements=2 --count Contracts=1 --out build/
+```
+
+The sheet then lists the sections in source order; the number of answer rows
+is the total number of questions in the drawn units. `--count` also works for
+an Easy/Medium/Hard file (`--count Easy=10 ...`) and cannot be combined with
+the per-difficulty flags.
+
 ### Scramble the question bank itself
 
 Emit a new Markdown file that is a shuffled version of the original — questions
-reordered within each section and every question's options shuffled. Correct
+(or cases) reordered within each section and every question's options shuffled;
+the questions inside a case keep their order. Correct
 answers stay marked inline, so the result is a valid, self-documenting exam MD
 (useful for producing a randomized master copy):
 
@@ -234,6 +307,28 @@ The only file the grading app needs about the exam. It never sees the questions.
 - `source_fingerprint` lets the app warn if a QR was produced from a different
   source than this key.
 
+Exams with cases or named sections get **version 2** (shown here for
+`examples/case-exam.md`), where `sections` is an
+ordered list giving each section's name and the question count of every unit
+(`1` for a standalone question, the number of `####` questions for a case):
+
+```json
+{
+  "version": 2,
+  "exam_title": "Software Design — Final",
+  "source_fingerprint": "947aebb0",
+  "options_per_question": 4,
+  "sections": [
+    { "name": "Requirements", "units": [2, 1] },
+    { "name": "Contracts", "units": [2] }
+  ],
+  "answer_key": [1, 2, 2, 0, 1]
+}
+```
+
+`answer_key` follows the same source order: sections in order, then units, then
+the questions of each unit.
+
 ### QR payload (in each PDF)
 
 Deliberately tiny and seed-centric:
@@ -246,12 +341,22 @@ Everything else the grader needs (`M`, the full key, section sizes) comes from
 `answer-key.json`. Only the per-variant facts the key file can't hold — the seed
 and how many questions were drawn from each section — live in the QR.
 
+Exams with a version-2 key carry a version-2 QR, with the number of units drawn
+from each section, in section order:
+
+```
+v2 | <variant_id> | <seed> | <source_fp> | <count_1>,<count_2>,...
+```
+
+The grader reads both versions; the QR version must match the key file version.
+
 ### PDF anatomy
 
 Each variant PDF contains: the exam title and variant id; the selected questions
 (in Easy→Medium→Hard order, but without printed section headings — students
 shouldn't see where the difficulty changes) with their scrambled options
-labeled A, B, C…; a
+labeled A, B, C… — a case prints its title and stem once, kept on the same page
+as its first question; a
 fixed **OMR bubble grid** (one row per question, `M` bubbles per row);
 **registration marks** bounding the answer area — full page width, only the
 band around the grid — so the grading camera needs to frame only that band
@@ -272,11 +377,14 @@ in both Python and Dart, forever.** The algorithm is fully specified so the two
 implementations cannot drift:
 
 1. Seed a **splitmix64** PRNG with the QR's `seed`.
-2. For each section in fixed order **[Easy, Medium, Hard]**: Fisher–Yates–shuffle
-   the section's index array `[0 … N_section-1]` and take the first `n_section`
-   indices as the selection (in shuffled order).
-3. The sheet order is the Easy selection, then Medium, then Hard.
-4. For each selected question, in sheet order: Fisher–Yates–shuffle its option
+2. For each section in key order (**[Easy, Medium, Hard]** for version-1 exams,
+   source order otherwise): Fisher–Yates–shuffle the section's **unit** index
+   array `[0 … U_section-1]` and take the first `n_section` indices as the
+   selection (in shuffled order). In a version-1 exam every unit is one
+   question, so this is the question selection.
+3. The sheet order is the first section's selection, then the next, and so on;
+   a selected case contributes its questions in source order.
+4. For each sheet question, in sheet order: Fisher–Yates–shuffle its option
    index array `[0 … M-1]`. Bubble position `p` then shows original option
    `perm[p]`; a mark at `p` is correct iff `perm[p] == answer_key[q]`.
 
@@ -284,8 +392,8 @@ Bounded random integers use rejection sampling (no modulo bias). The RNG stream
 is consumed in exactly this order (all selections, then all option scrambles).
 
 This is locked down by **`shared/test-vectors.json`**: a fixture mapping inputs
-(`seed, sections, n_easy/n_medium/n_hard, M`) to the expected selection and
-permutations. Both the Python test suite and the Dart test suite assert against
+(`seed, sections, n_easy/n_medium/n_hard, M`, and for `unit_plans` the unit
+sizes and per-section counts) to the expected selection and permutations. Both the Python test suite and the Dart test suite assert against
 it, so any change to either implementation that breaks cross-language agreement
 fails CI immediately. Changing the algorithm requires regenerating the vectors
 **and** bumping the QR payload version.
@@ -306,7 +414,8 @@ fails CI immediately. Changing the algorithm requires regenerating the vectors
 ├── shared/
 │   └── test-vectors.json   # cross-language determinism fixture (source of truth)
 ├── examples/
-│   └── sample-exam.md
+│   ├── sample-exam.md
+│   └── case-exam.md       # cases (shared stems) and named sections
 ├── README.md
 ├── CLAUDE.md
 └── LICENSE                 # GNU GPL v3

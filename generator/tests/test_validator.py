@@ -35,8 +35,10 @@ def test_missing_section() -> None:
     expect_error(text, "missing required section '## Hard'")
 
 
-def test_unknown_section_name() -> None:
-    expect_error(_replace("## Easy", "## Trivial"), "unknown section")
+def test_other_section_name_makes_a_free_form_exam() -> None:
+    exam = load_exam(_replace("## Easy", "## Trivial"))
+    assert not exam.legacy
+    assert exam.section_keys == ("Trivial", "Medium", "Hard")
 
 
 def test_duplicate_section() -> None:

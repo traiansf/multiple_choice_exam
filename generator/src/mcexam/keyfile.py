@@ -8,6 +8,7 @@ from pathlib import Path
 from .model import Exam
 
 KEY_VERSION = 1
+KEY_VERSION_V2 = 2
 
 
 def source_fingerprint(text: str) -> str:
@@ -17,6 +18,17 @@ def source_fingerprint(text: str) -> str:
 
 
 def build_key(exam: Exam, fingerprint: str) -> dict:
+    """v1 for legacy exams (unchanged schema); v2 otherwise, with the sections
+    as an ordered list and the question count of every unit."""
+    if not exam.legacy:
+        return {
+            "version": KEY_VERSION_V2,
+            "exam_title": exam.title,
+            "source_fingerprint": fingerprint,
+            "options_per_question": exam.options_per_question,
+            "sections": [{"name": key, "units": sizes} for key, sizes in exam.unit_sizes().items()],
+            "answer_key": exam.answer_key(),
+        }
     return {
         "version": KEY_VERSION,
         "exam_title": exam.title,

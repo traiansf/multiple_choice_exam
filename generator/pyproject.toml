@@ -10,6 +10,7 @@ requires-python = ">=3.11"
 license = "GPL-3.0-or-later"
 dependencies = [
     "click>=8.1",
+    "markdown-it-py>=3.0",
     "reportlab>=4.0",
     "segno>=1.6",
 ]

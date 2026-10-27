@@ -138,12 +138,12 @@ def test_render_long_title_does_not_reach_qr(tmp_path) -> None:
 def test_render_rejects_more_options_than_letters(tmp_path) -> None:
     import pytest
 
-    from mcexam.model import Exam, Question
+    from mcexam.model import Exam, Question, Section, Unit
 
     question = Question("Q?", tuple(f"opt{i}" for i in range(11)), 0)
     exam = Exam(
         title="T",
-        sections={"easy": (question,), "medium": (question,), "hard": (question,)},
+        parts=tuple(Section(name, (Unit((question,)),)) for name in ("Easy", "Medium", "Hard")),
     )
     plan = build_variant(1, exam.section_sizes(), {"easy": 1, "medium": 1, "hard": 1}, 11)
     with pytest.raises(ValueError, match="option"):
