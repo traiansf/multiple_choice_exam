@@ -55,7 +55,7 @@ void main() {
 
   test('rejects unsupported version', () {
     expectRejects(
-      validJson.replaceFirst('"version": 1', '"version": 2'),
+      validJson.replaceFirst('"version": 1', '"version": 3'),
       'version',
     );
   });

@@ -25,10 +25,13 @@ and option scrambles from the same seed.** Treat that as a hard invariant.
 The algorithm (specified fully in README → *Determinism & reproducibility*):
 
 1. `splitmix64(seed)` PRNG; bounded ints via **rejection sampling** (no modulo bias).
-2. Per section in fixed order **[Easy, Medium, Hard]**: Fisher–Yates shuffle the
-   section index array, take the first `n_section` as the selection.
-3. Sheet order = Easy selection ++ Medium ++ Hard.
-4. Per selected question (sheet order): Fisher–Yates shuffle its `M` option
+2. Per section in key order (**[Easy, Medium, Hard]** for v1 exams, source
+   order for v2): Fisher–Yates shuffle the section's *unit* index array, take
+   the first `n_section` as the selection. A unit is a standalone question or a
+   case (shared stem + `####` questions); in v1 every unit is one question.
+3. Sheet order = first section's selection ++ next ++ …; a case expands to its
+   questions in source order.
+4. Per sheet question (sheet order): Fisher–Yates shuffle its `M` option
    indices. Position `p` shows original option `perm[p]`; correct iff
    `perm[p] == answer_key[q]`.
 
@@ -76,8 +79,11 @@ When you change one of these, update **all** the listed mirrors in the same chan
 - **Uniform option count `M`** across every question (the bubble grid is fixed).
   Reject non-uniform input at lint time; never silently pad or truncate.
 - **Exactly one `- [x]`** per question.
-- All three sections (`Easy`, `Medium`, `Hard`) present; `##` sections, `###`
-  questions, single `#` title.
+- Legacy (v1) files: all three sections (`Easy`, `Medium`, `Hard`) present,
+  `##` sections, `###` questions, single `#` title; they keep the v1 key file
+  and QR so existing PDFs stay gradable. A case or any other section name
+  makes the file v2 (named sections in source order, `###` case + stem +
+  `####` questions, `--count NAME=N`, key and QR v2). Never change v1 output.
 - `scramble` emits **only** a Markdown file (markers travel with options) —
   never an answer key. The key file is a `generate`-only artifact.
 - Grader inputs are exactly: `answer-key.json` + the QR + the scanned sheet.

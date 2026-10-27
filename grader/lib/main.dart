@@ -145,9 +145,7 @@ class HomeScreen extends StatelessWidget {
                               ),
                               const SizedBox(height: 8),
                               Text(
-                                'easy ${key.sections['easy']},'
-                                ' medium ${key.sections['medium']},'
-                                ' hard ${key.sections['hard']}'
+                                '${key.sections.entries.map((e) => '${e.key} ${e.value}').join(', ')}'
                                 ' — ${key.optionsPerQuestion} options per'
                                 ' question',
                               ),

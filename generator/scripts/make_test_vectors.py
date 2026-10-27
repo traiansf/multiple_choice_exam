@@ -11,7 +11,7 @@ import json
 from pathlib import Path
 
 from mcexam.rng import SplitMix64
-from mcexam.select import build_variant
+from mcexam.select import build_plan, build_variant
 
 RAW_SEEDS = [0, 1, 42, 123456789, 2**64 - 1]
 
@@ -48,6 +48,36 @@ VARIANT_CASES = [
     },
 ]
 
+# Format v2: sections as an ordered list of units (question counts per unit;
+# a unit larger than 1 is a case). Selection draws units.
+UNIT_PLAN_CASES = [
+    {
+        "seed": 7,
+        "sections": [
+            {"name": "Modeling", "units": [2, 1, 3]},
+            {"name": "Contracts", "units": [1, 1]},
+        ],
+        "counts": [2, 1],
+        "m": 4,
+    },
+    {
+        "seed": 2**64 - 1,
+        "sections": [{"name": "A", "units": [3, 3, 2, 4]}],
+        "counts": [4],
+        "m": 4,
+    },
+    {
+        "seed": 31337,
+        "sections": [
+            {"name": "S1", "units": [1, 1, 1, 1]},
+            {"name": "S2", "units": [2, 2]},
+            {"name": "S3", "units": [5]},
+        ],
+        "counts": [2, 0, 1],
+        "m": 5,
+    },
+]
+
 
 def main() -> None:
     vectors = {
@@ -56,6 +86,7 @@ def main() -> None:
         " 64-bit values are decimal strings.",
         "splitmix64": [],
         "variants": [],
+        "unit_plans": [],
     }
     for seed in RAW_SEEDS:
         rng = SplitMix64(seed)
@@ -72,6 +103,23 @@ def main() -> None:
                 "options_per_question": case["m"],
                 "expected": {
                     "selections": {k: list(v) for k, v in plan.selections.items()},
+                    "option_perms": [list(sq.option_perm) for sq in plan.sheet],
+                },
+            }
+        )
+    for case in UNIT_PLAN_CASES:
+        units = {section["name"]: section["units"] for section in case["sections"]}
+        counts = dict(zip(units, case["counts"], strict=True))
+        plan = build_plan(case["seed"], units, counts, case["m"])
+        vectors["unit_plans"].append(
+            {
+                "seed": str(case["seed"]),
+                "sections": case["sections"],
+                "counts": case["counts"],
+                "options_per_question": case["m"],
+                "expected": {
+                    "selections": [list(plan.selections[name]) for name in units],
+                    "global_indices": [sq.global_index for sq in plan.sheet],
                     "option_perms": [list(sq.option_perm) for sq in plan.sheet],
                 },
             }

@@ -266,3 +266,9 @@ def test_scramble_deterministic_with_seed(tmp_path) -> None:
         )
         texts.append(out.read_text())
     assert texts[0] == texts[1]
+
+
+def test_lint_case_example_file() -> None:
+    example = EXAMPLE.with_name("case-exam.md")
+    result = CliRunner().invoke(main, ["lint", "--input", str(example)])
+    assert result.exit_code == 0, result.output

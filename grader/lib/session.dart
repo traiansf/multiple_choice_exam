@@ -15,7 +15,6 @@ import 'keyfile.dart';
 import 'omr.dart';
 import 'qr_scan.dart';
 import 'records.dart';
-import 'select.dart' show sectionKeys;
 import 'sheet_geometry.dart' as geom;
 import 'sheet_render.dart';
 
@@ -163,14 +162,12 @@ class GraderSession extends ChangeNotifier {
       notifyListeners();
       return false;
     }
-    for (final section in sectionKeys) {
-      if (decoded.counts[section]! > key.sections[section]!) {
-        _lastError =
-            'QR requests ${decoded.counts[section]} $section questions but'
-            ' the key has only ${key.sections[section]}.';
-        notifyListeners();
-        return false;
-      }
+    try {
+      grading.planFor(key, decoded);
+    } on grading.GradingException catch (error) {
+      _lastError = '${error.message}.';
+      notifyListeners();
+      return false;
     }
     _payload = decoded;
     _omr = null;
@@ -202,10 +199,7 @@ class GraderSession extends ChangeNotifier {
       notifyListeners();
       return false;
     }
-    final totalRows = payload.counts.values.fold(
-      0,
-      (sum, count) => sum + count,
-    );
+    final totalRows = grading.planFor(key, payload).sheet.length;
     final OmrResult detected;
     try {
       detected = detectMarks(
@@ -318,13 +312,14 @@ class GraderSession extends ChangeNotifier {
   /// valid while the current sheet needs review — cleanly graded sheets go
   /// through [confirmResult].
   void submitManualGrade(int score, {String? studentName}) {
+    final key = _key;
     final payload = _payload;
-    if (payload == null || !(_omr?.needsReview ?? false)) {
+    if (key == null || payload == null || !(_omr?.needsReview ?? false)) {
       throw StateError(
         'submitManualGrade is only valid for a review-flagged sheet',
       );
     }
-    final total = payload.counts.values.fold(0, (sum, count) => sum + count);
+    final total = grading.planFor(key, payload).sheet.length;
     if (score < 0 || score > total) {
       throw ArgumentError.value(score, 'score', 'must be between 0 and $total');
     }
