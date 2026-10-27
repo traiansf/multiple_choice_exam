@@ -129,9 +129,9 @@ Several questions can share one stem — a scenario, a table, a code excerpt.
 Such a group is a **case**: a `###` heading with the case title, then the stem
 (any Markdown except headings and `- [ ]`/`- [x]` items: paragraphs, lists,
 pipe tables, quotes, and fenced code blocks, whose lines may start with `#` or
-`- [ ]`; indent code with a fence, not with four spaces), then the case's questions as `####`
-headings with their options. A `###` heading followed directly by options is
-still a standalone question, and both can be mixed in a section.
+`- [ ]`; write code in a fence, not as a block indented by four
+spaces), then the case's questions as `####` headings
+with their options. A `###` heading followed directly by options is still a standalone question, and both can be mixed in a section.
 
 ```markdown
 # Software Design — Final
