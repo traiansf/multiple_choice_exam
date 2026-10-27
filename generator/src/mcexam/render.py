@@ -305,8 +305,17 @@ def _draw_questions(
 
     page_header()
     frame = _new_frame(y)
-    for group in _question_groups(exam, plan, font):
+    page_height = _available(frame)
+    groups = _question_groups(exam, plan, font)
+    for i, (unit, group) in enumerate(groups):
         height = sum(_height(f, width, canvas) for f in group)
+        if unit is not None and (i == 0 or groups[i - 1][0] != unit):
+            # A case starts: keep all of it on one page when it fits on one.
+            whole = sum(
+                _height(f, width, canvas) for key, g in groups[i:] if key == unit for f in g
+            )
+            if whole <= page_height:
+                height = whole
         if height > _available(frame) and not frame._atTop:
             canvas.showPage()
             page_header()
@@ -349,10 +358,14 @@ def _height(flowable: Flowable, width: float, canvas: Canvas) -> float:
     return height + flowable.getSpaceBefore() + flowable.getSpaceAfter()
 
 
-def _question_groups(exam: Exam, plan: VariantPlan, font: str) -> list[list[Flowable]]:
-    """Flowables per block that should start on one page: each standalone
-    question; for a case, its title and stem together with its first question,
-    then each further question."""
+def _question_groups(
+    exam: Exam, plan: VariantPlan, font: str
+) -> list[tuple[tuple[str, int] | None, list[Flowable]]]:
+    """Flowables per block that should start on one page: the preamble; each
+    standalone question; for a case, its title and stem together with its
+    first question, then each further question. Each block comes with its
+    case's (section key, unit index), or None outside a case, so that a case
+    that fits on a page is kept on one."""
     mono = _mono_font(font)
     prompt_style = ParagraphStyle("prompt", fontName=font, fontSize=11, leading=14)
     option_style = ParagraphStyle(
@@ -363,9 +376,9 @@ def _question_groups(exam: Exam, plan: VariantPlan, font: str) -> list[list[Flow
     stems = StemRenderer(stem_style, mono)
     units = exam.units_by_key()
 
-    groups: list[list[Flowable]] = []
+    groups: list[tuple[tuple[str, int] | None, list[Flowable]]] = []
     if exam.preamble:
-        groups.append([*stems.blocks(exam.preamble), spacer(10)])
+        groups.append((None, [*stems.blocks(exam.preamble), spacer(10)]))
     previous_unit: tuple[str, int] | None = None
     for number, sheet_question in enumerate(plan.sheet, start=1):
         unit = units[sheet_question.section][sheet_question.unit_index]
@@ -382,5 +395,5 @@ def _question_groups(exam: Exam, plan: VariantPlan, font: str) -> list[list[Flow
             text = inline_markup(question.options[original_index], mono)
             group.append(Paragraph(f"{OPTION_LETTERS[position]}) {text}", option_style))
         group.append(spacer(10))
-        groups.append(group)
+        groups.append((current_unit if unit.case is not None else None, group))
     return groups

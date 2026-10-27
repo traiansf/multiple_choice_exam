@@ -345,3 +345,18 @@ def test_cli_no_shuffle_writes_one_sample(tmp_path) -> None:
     many = CliRunner().invoke(main, [*args, "--no-shuffle", "--variants", "2"])
     assert many.exit_code != 0
     assert "--no-shuffle" in many.output
+
+
+def test_a_case_that_fits_on_a_page_is_not_split(tmp_path) -> None:
+    """Three cases of about 0.6 page each: split freely they would fill two
+    question pages; kept whole, each takes its own."""
+    questions = "".join(
+        f"\n#### Question {q}?\n- [x] yes\n- [ ] no\n- [ ] maybe\n- [ ] never\n" for q in range(5)
+    )
+    text = "# Layout\n\n## S\n" + "".join(
+        f"\n### Case {c}\n\nA short stem.\n{questions}" for c in range(3)
+    )
+    exam = load_exam(text)
+    plan = build_plan(1, exam.unit_sizes(), {"S": 3}, 4)
+    pages = render_variant(tmp_path / "layout.pdf", exam, plan, qr_png("v2|1|1|deadbeef|3"), 1)
+    assert pages == 1 + 3
