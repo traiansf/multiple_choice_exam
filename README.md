@@ -249,6 +249,14 @@ is the total number of questions in the drawn units. `--count` also works for
 an Easy/Medium/Hard file (`--count Easy=10 ...`) and cannot be combined with
 the per-difficulty flags.
 
+**Sheet language.** `--lang` sets the language of the few fixed words the
+tool prints itself — the name line and the variant number on the answer
+sheet and on every question page: `en` (default: `Name:`, `Variant 001`) or
+`ro` (`Nume:`, `Varianta 001`). The exam's own text comes from the Markdown
+file as written. The language changes only these words: the answer-sheet
+geometry, the QR and `answer-key.json` stay the same. To add a language, add
+an entry to `LABELS` in `generator/src/mcexam/render.py`.
+
 ### Scramble the question bank itself
 
 Emit a new Markdown file that is a shuffled version of the original — questions

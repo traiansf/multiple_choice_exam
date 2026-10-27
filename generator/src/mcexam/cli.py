@@ -9,7 +9,7 @@ from .keyfile import source_fingerprint, write_key
 from .model import Exam
 from .parser import ParseError
 from .qr import QrPayload, QrPayloadV2, encode_payload, qr_png
-from .render import render_variant
+from .render import DEFAULT_LANG, LABELS, render_variant
 from .scramble import scramble_exam, to_markdown
 from .select import build_plan, variant_seeds
 from .validator import ValidationError, load_exam
@@ -145,6 +145,13 @@ def _parse_count_specs(exam: Exam, specs: tuple[str, ...]) -> dict[str, int]:
     default=Path("build"),
     show_default=True,
 )
+@click.option(
+    "--lang",
+    type=click.Choice(sorted(LABELS)),
+    default=DEFAULT_LANG,
+    show_default=True,
+    help="Language of the fixed sheet labels (name line, variant number).",
+)
 def generate(
     input_path: Path,
     variants: int,
@@ -155,6 +162,7 @@ def generate(
     count_specs: tuple[str, ...],
     base_seed: int | None,
     out_dir: Path,
+    lang: str,
 ) -> None:
     """Generate variant PDFs and answer-key.json."""
     text, exam = _load(input_path)
@@ -213,6 +221,7 @@ def generate(
             plan,
             qr_png(encode_payload(qr_payload)),
             variant_id,
+            lang,
         )
     click.echo(f"wrote {variants} variant(s) + answer-key.json to {out_dir}/")
 

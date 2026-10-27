@@ -66,6 +66,14 @@ QR_SIZE = 28 * mm  # side length of the answer-sheet QR image
 
 OPTION_LETTERS = "ABCDEFGHIJ"
 
+# The fixed words printed on every variant, per sheet language (--lang).
+# Changing them changes only text, never the geometry the grader reads.
+LABELS = {
+    "en": {"name": "Name", "variant": "Variant"},
+    "ro": {"name": "Nume", "variant": "Varianta"},
+}
+DEFAULT_LANG = "en"
+
 # Directories searched for the DejaVu family (full Unicode, including
 # diacritics and math symbols); MCEXAM_FONT_DIR, if set, comes first.
 _FONT_DIRS = (
@@ -173,9 +181,17 @@ def _mono_font(body: str) -> str:
 
 
 def render_variant(
-    path: Path, exam: Exam, plan: VariantPlan, qr_png_bytes: bytes, variant_id: int
+    path: Path,
+    exam: Exam,
+    plan: VariantPlan,
+    qr_png_bytes: bytes,
+    variant_id: int,
+    lang: str = DEFAULT_LANG,
 ) -> int:
     """Write the variant PDF; returns the page count."""
+    if lang not in LABELS:
+        raise ValueError(f"unknown sheet language {lang!r}; known: {', '.join(LABELS)}")
+    labels = LABELS[lang]
     rows = len(plan.sheet)
     m = exam.options_per_question
     if m > len(OPTION_LETTERS):
@@ -190,16 +206,23 @@ def render_variant(
         )
     font = _body_font()
     canvas = Canvas(str(path), pagesize=A4, invariant=1, pageCompression=0)
-    _draw_answer_sheet(canvas, exam.title, variant_id, rows, m, qr_png_bytes, font)
+    _draw_answer_sheet(canvas, exam.title, variant_id, rows, m, qr_png_bytes, font, labels)
     canvas.showPage()
-    _draw_questions(canvas, exam, plan, variant_id, font, qr_png_bytes)
+    _draw_questions(canvas, exam, plan, variant_id, font, qr_png_bytes, labels)
     pages = canvas.getPageNumber()
     canvas.save()
     return pages
 
 
 def _draw_answer_sheet(
-    canvas: Canvas, title: str, variant_id: int, rows: int, m: int, qr_png_bytes: bytes, font: str
+    canvas: Canvas,
+    title: str,
+    variant_id: int,
+    rows: int,
+    m: int,
+    qr_png_bytes: bytes,
+    font: str,
+    labels: dict[str, str],
 ) -> None:
     for x, y in registration_mark_positions():
         canvas.rect(x, y, REG_SIZE, REG_SIZE, stroke=0, fill=1)
@@ -219,8 +242,8 @@ def _draw_answer_sheet(
         canvas.drawString(MARGIN, y_title, line)
         y_title -= 7 * mm
     canvas.setFont(font, 12)
-    canvas.drawString(MARGIN, y_title - 1 * mm, f"Variant {variant_id:03d}")
-    canvas.drawString(MARGIN, PAGE_H - NAME_LINE_TOP, "Name: " + "_" * 40)
+    canvas.drawString(MARGIN, y_title - 1 * mm, f"{labels['variant']} {variant_id:03d}")
+    canvas.drawString(MARGIN, PAGE_H - NAME_LINE_TOP, f"{labels['name']}: " + "_" * 40)
 
     canvas.setFont(font, 9)
     blocks = (rows + ROWS_PER_BLOCK - 1) // ROWS_PER_BLOCK
@@ -246,6 +269,7 @@ def _draw_questions(
     variant_id: int,
     font: str,
     qr_png_bytes: bytes,
+    labels: dict[str, str],
 ) -> None:
     width = PAGE_W - 2 * MARGIN
     qr_image = ImageReader(io.BytesIO(qr_png_bytes))
@@ -272,7 +296,7 @@ def _draw_questions(
         # The variant number is its own unconditional line: a long title must
         # never swallow the page's human-readable identification.
         canvas.setFont(font, 12)
-        canvas.drawString(MARGIN, PAGE_H - MARGIN - 30, f"Variant {variant_id:03d}")
+        canvas.drawString(MARGIN, PAGE_H - MARGIN - 30, f"{labels['variant']} {variant_id:03d}")
         # Content starts below whichever is taller: the QR or the header.
         y = PAGE_H - MARGIN - QUESTION_PAGE_QR_SIZE - 8
 

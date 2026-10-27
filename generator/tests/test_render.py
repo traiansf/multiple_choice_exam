@@ -1,3 +1,4 @@
+import pytest
 from reportlab.lib.units import mm
 
 from mcexam.qr import qr_png
@@ -230,3 +231,22 @@ def test_long_title_renders_question_pages(tmp_path) -> None:
     data = out.read_bytes()
     assert data.startswith(b"%PDF")
     assert data.count(b" Do") == pages
+
+
+def test_sheet_language_changes_only_the_labels(tmp_path) -> None:
+    exam = load_exam(SAMPLE_MD)
+    plan = build_variant(1, exam.section_sizes(), {"easy": 2, "medium": 2, "hard": 1}, 4)
+    png = qr_png("v1|1|1|2|2|1|deadbeef")
+    en, ro, default = tmp_path / "en.pdf", tmp_path / "ro.pdf", tmp_path / "default.pdf"
+    render_variant(en, exam, plan, png, 1, "en")
+    render_variant(ro, exam, plan, png, 1, "ro")
+    render_variant(default, exam, plan, png, 1)
+    assert default.read_bytes() == en.read_bytes()
+    assert ro.read_bytes() != en.read_bytes()
+
+
+def test_unknown_sheet_language_is_rejected(tmp_path) -> None:
+    exam = load_exam(SAMPLE_MD)
+    plan = build_variant(1, exam.section_sizes(), {"easy": 1, "medium": 1, "hard": 1}, 4)
+    with pytest.raises(ValueError, match="unknown sheet language"):
+        render_variant(tmp_path / "x.pdf", exam, plan, qr_png("v1|1|1|1|1|1|deadbeef"), 1, "xx")

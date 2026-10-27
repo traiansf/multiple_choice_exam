@@ -267,3 +267,24 @@ def test_cli_count_works_for_legacy_exams(tmp_path) -> None:
     )
     assert result.exit_code == 0, result.output
     assert json.loads((out / "answer-key.json").read_text(encoding="utf-8"))["version"] == 1
+
+
+def test_cli_generate_romanian_labels(tmp_path) -> None:
+    args = [
+        "generate",
+        "--input",
+        str(write_case_exam(tmp_path)),
+        "--variants",
+        "1",
+        "--count",
+        "Modeling=1",
+        "--count",
+        "Contracts=1",
+        "--base-seed",
+        "3",
+    ]
+    ro = CliRunner().invoke(main, [*args, "--lang", "ro", "--out", str(tmp_path / "ro")])
+    assert ro.exit_code == 0, ro.output
+    bad = CliRunner().invoke(main, [*args, "--lang", "xx", "--out", str(tmp_path / "xx")])
+    assert bad.exit_code != 0
+    assert "xx" in bad.output
