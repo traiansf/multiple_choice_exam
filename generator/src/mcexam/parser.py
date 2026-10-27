@@ -4,7 +4,9 @@ A '###' heading opens either a standalone question (options follow directly)
 or a case: stem lines (any Markdown except headings and option items),
 then '####' questions with their options. Markdown between the '#' title and
 the first '##' section is the preamble (instructions printed before the
-questions), with the same restrictions as a stem.
+questions), with the same restrictions as a stem. Inside a fenced code
+block (``` or ~~~) in a stem or the preamble, every line is taken verbatim,
+so code may contain '#' comments or '- [ ]' lines.
 """
 
 import re
@@ -71,6 +73,7 @@ class RawExam:
 
 
 _OPTION_RE = re.compile(r"^- \[( |x|X)\] (.*\S.*)$")
+_FENCE_RE = re.compile(r"^ {0,3}(`{3,}|~{3,})")
 
 
 def parse(text: str) -> RawExam:
@@ -82,6 +85,7 @@ def parse(text: str) -> RawExam:
     pending: tuple[int, str] | None = None
     case: RawCase | None = None
     question: RawQuestion | None = None
+    fence: tuple[int, str] | None = None  # (line, marker) of an open code fence
 
     def flush_pending() -> None:
         """A '###' with nothing under it: a question without options (the
@@ -104,6 +108,29 @@ def parse(text: str) -> RawExam:
         option = _OPTION_RE.match(line)
         in_stem = (pending is not None or case is not None) and question is None
         in_preamble = section is None and bool(exam.titles)
+        if fence is not None:
+            # Inside a fenced code block: verbatim, until a closing fence of
+            # the same character, at least as long.
+            closing = _FENCE_RE.match(line)
+            if (
+                closing
+                and closing.group(1)[0] == fence[1][0]
+                and len(closing.group(1)) >= len(fence[1])
+                and not line[closing.end() :].strip()
+            ):
+                fence = None
+            (case.stem_lines if case is not None else exam.preamble_lines).append(line)
+            continue
+        opening = _FENCE_RE.match(line)
+        if opening and (in_stem or in_preamble):
+            fence = (line_no, opening.group(1))
+            if in_stem:
+                if pending is not None:
+                    open_case(line_no)
+                case.stem_lines.append(line)
+            else:
+                exam.preamble_lines.append(line)
+            continue
         if not line:
             if case is not None and question is None:
                 case.stem_lines.append("")
@@ -166,5 +193,7 @@ def parse(text: str) -> RawExam:
                 " first '##' section, or in a case stem, between a '###' case"
                 " heading and its first '####' question)",
             )
+    if fence is not None:
+        raise ParseError(fence[0], "code fence is never closed")
     flush_pending()
     return exam

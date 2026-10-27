@@ -360,3 +360,53 @@ def test_a_case_that_fits_on_a_page_is_not_split(tmp_path) -> None:
     plan = build_plan(1, exam.unit_sizes(), {"S": 3}, 4)
     pages = render_variant(tmp_path / "layout.pdf", exam, plan, qr_png("v2|1|1|deadbeef|3"), 1)
     assert pages == 1 + 3
+
+
+def test_scramble_keeps_the_preamble() -> None:
+    exam = load_exam(PREAMBLE_MD)
+    assert scramble_exam(exam, 3).preamble == exam.preamble
+    assert "Answer **every** question." in to_markdown(scramble_exam(exam, 3))
+
+
+FENCED_MD = """\
+# Code exam
+
+Example:
+
+```text
+# not a heading
+- [ ] not an option
+```
+
+## Design
+
+### Case: a counter
+
+````python
+# the counter
+def inc(self):
+    pass
+```
+- [x] still code
+````
+
+#### What does inc do?
+- [x] Nothing
+- [ ] Adds one
+- [ ] Fails
+- [ ] Loops
+"""
+
+
+def test_code_fences_are_verbatim_in_stems_and_preamble() -> None:
+    exam = load_exam(FENCED_MD)
+    assert "# not a heading\n- [ ] not an option" in exam.preamble
+    stem = exam.parts[0].units[0].case.stem
+    assert stem.startswith("````python\n# the counter")
+    assert "- [x] still code\n````" in stem
+    assert load_exam(to_markdown(exam)) == exam
+
+
+def test_unclosed_code_fence_is_error() -> None:
+    with pytest.raises(ParseError, match="line 7: code fence is never closed"):
+        parse("# T\n\n## S\n\n### Case\n\n```\ncode\n")

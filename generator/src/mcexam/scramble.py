@@ -35,7 +35,7 @@ def scramble_exam(exam: Exam, seed: int) -> Exam:
                 )
             units.append(Unit(questions=tuple(questions), case=original.case))
         parts.append(Section(name=part.name, units=tuple(units)))
-    return Exam(title=exam.title, parts=tuple(parts))
+    return Exam(title=exam.title, parts=tuple(parts), preamble=exam.preamble)
 
 
 def _question_lines(heading: str, question: Question) -> list[str]:

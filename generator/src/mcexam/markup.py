@@ -36,12 +36,23 @@ _TAGS = {
 _TAG_RE = re.compile(r"<(/?)([a-z0-9]+)[^>]*>")
 
 
+def plain_markup(text: str) -> str:
+    """Text taken literally, as reportlab paragraph markup."""
+    return text.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+
+
+_ALT_RE = re.compile(r'\salt="([^"]*)"')
+
+
 def inline_markup(text: str, mono_font: str) -> str:
     """One line of inline Markdown as reportlab paragraph markup."""
     rendered = _MD.renderInline(text)
 
     def tag(match: re.Match) -> str:
         closing, name = match.group(1), match.group(2)
+        if name == "img":
+            alt = _ALT_RE.search(match.group(0))
+            return alt.group(1) if alt else ""
         if name in _TAGS:
             return f"<{closing}{_TAGS[name]}>"
         if name == "code":

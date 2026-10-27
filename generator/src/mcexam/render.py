@@ -18,9 +18,9 @@ from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfbase.pdfmetrics import registerFontFamily
 from reportlab.pdfbase.ttfonts import TTFont
 from reportlab.pdfgen.canvas import Canvas
-from reportlab.platypus import Flowable, Frame, Paragraph
+from reportlab.platypus import Flowable, Frame, Paragraph, Spacer
 
-from .markup import StemRenderer, inline_markup, spacer
+from .markup import StemRenderer, inline_markup, plain_markup, spacer
 from .model import Exam
 from .select import VariantPlan
 
@@ -323,8 +323,8 @@ def _draw_questions(
         pending = list(group)
         while pending:
             flowable = pending[0]
-            if frame.add(flowable, canvas):
-                pending.pop(0)
+            if frame.add(flowable, canvas) or isinstance(flowable, Spacer):
+                pending.pop(0)  # a spacer that does not fit is not carried over
                 continue
             pieces = frame.split(flowable, canvas)
             if len(pieces) > 1 and frame.add(pieces[0], canvas):
@@ -376,6 +376,10 @@ def _question_groups(
     stems = StemRenderer(stem_style, mono)
     units = exam.units_by_key()
 
+    # Legacy exams predate Markdown: their prompts and options print verbatim.
+    def text_markup(text: str) -> str:
+        return plain_markup(text) if exam.legacy else inline_markup(text, mono)
+
     groups: list[tuple[tuple[str, int] | None, list[Flowable]]] = []
     if exam.preamble:
         groups.append((None, [*stems.blocks(exam.preamble), spacer(10)]))
@@ -390,9 +394,9 @@ def _question_groups(
             group += stems.blocks(unit.case.stem)
             group.append(spacer(4))
         previous_unit = current_unit
-        group.append(Paragraph(f"{number}. {inline_markup(question.prompt, mono)}", prompt_style))
+        group.append(Paragraph(f"{number}. {text_markup(question.prompt)}", prompt_style))
         for position, original_index in enumerate(sheet_question.option_perm):
-            text = inline_markup(question.options[original_index], mono)
+            text = text_markup(question.options[original_index])
             group.append(Paragraph(f"{OPTION_LETTERS[position]}) {text}", option_style))
         group.append(spacer(10))
         groups.append((current_unit if unit.case is not None else None, group))

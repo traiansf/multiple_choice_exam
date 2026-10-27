@@ -250,3 +250,23 @@ def test_unknown_sheet_language_is_rejected(tmp_path) -> None:
     plan = build_variant(1, exam.section_sizes(), {"easy": 1, "medium": 1, "hard": 1}, 4)
     with pytest.raises(ValueError, match="unknown sheet language"):
         render_variant(tmp_path / "x.pdf", exam, plan, qr_png("v1|1|1|1|1|1|deadbeef"), 1, "xx")
+
+
+def test_legacy_prompts_and_options_print_verbatim(tmp_path, monkeypatch) -> None:
+    import mcexam.render as render
+
+    def no_markdown(*_args):
+        raise AssertionError("legacy text must not be read as Markdown")
+
+    monkeypatch.setattr(render, "inline_markup", no_markdown)
+    exam = load_exam(SAMPLE_MD)
+    plan = build_variant(1, exam.section_sizes(), {"easy": 2, "medium": 2, "hard": 1}, 4)
+    render_variant(tmp_path / "v1.pdf", exam, plan, qr_png("v1|1|1|2|2|1|deadbeef"), 1)
+
+
+def test_plain_and_inline_markup() -> None:
+    from mcexam.markup import inline_markup, plain_markup
+
+    assert plain_markup("2*3*4 < __init__ & [x]") == "2*3*4 &lt; __init__ &amp; [x]"
+    assert inline_markup("see ![a chart](c.png)", "Courier") == "see a chart"
+    assert inline_markup(r"2\*3\*4", "Courier") == "2*3*4"

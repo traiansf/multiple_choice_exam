@@ -112,8 +112,12 @@ sections, which relax rule 2):
 Because the correct answer is marked inline, a Markdown file is *self-documenting*
 — which is why `scramble` (below) needs no separate key file.
 
-Prompts and options may use inline Markdown (`**bold**`, `*italic*`,
-`` `code` ``); each stays on its heading or list-item line.
+In an exam with cases or named sections (below), prompts and options may use
+inline Markdown (`**bold**`, `*italic*`, `` `code` ``); each stays on its
+heading or list-item line. Write a literal `*`, `_` or `[` there as `\*`,
+`\_` or `\[` (for example `2\*3`, `\_\_init\_\_`, or inside `` `code` ``). In
+an Easy/Medium/Hard file without cases they print exactly as written, as
+before.
 
 Text between the `#` title and the first `##` section is the **preamble**:
 instructions printed once, at the top of the first question page. It takes the
@@ -373,7 +377,8 @@ The grader reads both versions; the QR version must match the key file version.
 ### PDF anatomy
 
 Each variant PDF contains: the exam title and variant id; the selected questions
-(in Easy→Medium→Hard order, but without printed section headings — students
+(in key order — Easy→Medium→Hard for a legacy file, else the source order of
+the sections — but without printed section headings — students
 shouldn't see where the difficulty changes) with their scrambled options
 labeled A, B, C… — a case prints its title and stem once and starts a new page
 rather than split, when it fits on one (a longer case keeps at least its stem
